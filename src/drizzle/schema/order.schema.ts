@@ -1,6 +1,6 @@
 import { pgEnum } from 'drizzle-orm/pg-core';
 import { boolean } from 'drizzle-orm/pg-core';
-import { numeric } from 'drizzle-orm/pg-core';
+import { integer } from 'drizzle-orm/pg-core';
 import { uuid, varchar } from 'drizzle-orm/pg-core';
 import { pgTable, timestamp } from 'drizzle-orm/pg-core';
 import { diningTable } from './diningTable.schema';
@@ -30,7 +30,7 @@ export const order = pgTable('order', {
     .references(() => users.id)
     .notNull(),
   status: statusEnum('status').notNull().default('pending'),
-  total_price: numeric('total_price').notNull(),
+  total_price: integer('total_price').notNull(),
   is_paid: boolean('is_paid').default(false),
   payment_method: payment_method_enum('payment_method'),
   ordered_at: timestamp('ordered_at').defaultNow(),
@@ -46,8 +46,8 @@ export const order_item = pgTable('order-item', {
     .references(() => menu_item.id)
     .notNull(),
   item_name: varchar('item_name').notNull(),
-  price_snapshot: numeric('price_snapshot').notNull(),
-  quantity: numeric('quantity').notNull(),
-  subtotal: numeric('subtotal').notNull(),
+  price_snapshot: integer('price_snapshot').notNull(),
+  quantity: integer('quantity').notNull(),
+  subtotal: integer('subtotal').notNull(),
   created_at: timestamp('created_at'),
 });
