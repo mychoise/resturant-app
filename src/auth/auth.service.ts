@@ -1,4 +1,9 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { login, register } from './interface/auth.interface';
 import { DRIZZLE } from 'src/drizzle/drizzle.module';
@@ -23,10 +28,9 @@ export class AuthService {
       .where(eq(schema.users.email, data.email));
 
     if (user) {
-      throw new Error('User with this email already exists');
+      throw new ConflictException('User with this email already exists'); // ✅ 409
     }
     const hashedPassword = await this.hashPassword(data.password);
-    const accessToken = this.generateAccessToken(user);
 
     const [addedUser] = await this.db
       .insert(schema.users)
@@ -37,6 +41,8 @@ export class AuthService {
         role: data.role,
       })
       .returning();
+
+    const accessToken = this.generateAccessToken(addedUser);
 
     return {
       msg: 'User created successfully',

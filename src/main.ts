@@ -1,9 +1,14 @@
-import { NestFactory } from '@nestjs/core';
+import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import cookieParser from 'cookie-parser';
+import { CatchEverythingFilter } from 'common/filters/catch-everything.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const httpAdapterHost = app.get(HttpAdapterHost);
+  app.useGlobalFilters(new CatchEverythingFilter(httpAdapterHost));
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true, // strips fields not in DTO
@@ -11,6 +16,7 @@ async function bootstrap() {
       transform: true, // auto-transforms types
     }),
   );
-  await app.listen(process.env.PORT ?? 4000);
+  app.use(cookieParser());
+  await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();

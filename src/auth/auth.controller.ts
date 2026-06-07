@@ -1,19 +1,48 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Res, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { registerDto } from './dto/register.dto';
+import { registerDto, Role } from './dto/register.dto';
 import { loginDto } from './dto/login.dto';
-
+import { JwtAuthGuard } from './guards/access.guard';
+import { User } from './decorators/user.decorator';
+import { RolesGuard } from './guards/roles.guard';
+import { Roles } from './decorators/roles.decorator';
+import type { Response } from 'express';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  async register(@Body() data: registerDto) {
-    return this.authService.register(data);
+  async register(
+    @Body() data: registerDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { token, ...result } = await this.authService.register(data);
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    return result;
   }
 
   @Post('login')
   async login(@Body() data: loginDto) {
     return this.authService.login(data);
+  }
+
+  @Get('profile')
+  @UseGuards(JwtAuthGuard)
+  getProfile(@User() user: any) {
+    return user;
+  }
+
+  @Get('waiter')
+  @Roles(Role.WAITER)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  getwaiter(@User() user: any) {
+    return user;
   }
 }
