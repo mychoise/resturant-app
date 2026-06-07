@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { login, register } from './interface/auth.interface';
 import { DRIZZLE } from 'src/drizzle/drizzle.module';
@@ -26,11 +26,7 @@ export class AuthService {
       throw new Error('User with this email already exists');
     }
     const hashedPassword = await this.hashPassword(data.password);
-    const accessToken = this.generateAccessToken(
-      data.email,
-      data.role,
-      data.name,
-    );
+    const accessToken = this.generateAccessToken(user);
 
     const [addedUser] = await this.db
       .insert(schema.users)
@@ -44,7 +40,11 @@ export class AuthService {
 
     return {
       msg: 'User created successfully',
-      user: addedUser,
+      user: {
+        email: addedUser.email,
+        name: addedUser.name,
+        role: addedUser.role,
+      },
       token: accessToken,
     };
   }
@@ -68,27 +68,45 @@ export class AuthService {
       throw new Error('Invalid email or password');
     }
 
-    const accessToken = this.generateAccessToken(
-      user.email,
-      user.role,
-      user.name,
-    );
+    const accessToken = this.generateAccessToken(user);
 
     return {
       msg: 'Login successful',
-      user,
+      user: {
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
       token: accessToken,
     };
   }
 
-  async hashPassword(password: string): Promise<string> {
-    return await bcrypt.hash(
-      password,
-      this.configService.get<number>('SALT_ROUNDS')!,
-    );
+  async validateUser(email: string) {
+    const [user] = await this.db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.email, email));
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const { password, ...result } = user;
+
+    return result;
   }
-  generateAccessToken(email: string, role: string, name: string): string {
-    const payload = { email, role, name };
+
+  async hashPassword(password: string): Promise<string> {
+    const saltRounds = parseInt(this.configService.get<string>('SALT_ROUNDS')!);
+    return await bcrypt.hash(password, saltRounds);
+  }
+  generateAccessToken(user: schema.User): string {
+    const payload = {
+      sub: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    };
     return this.jwtService.sign(payload, {
       secret: this.configService.get<string>('JWT_SECRET')!,
       expiresIn: '8h',
