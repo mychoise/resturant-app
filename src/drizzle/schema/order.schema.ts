@@ -30,9 +30,9 @@ export const order = pgTable('order', {
     .references(() => users.id)
     .notNull(),
   status: statusEnum('status').notNull().default('pending'),
-  total_price: integer('total_price').notNull(),
+  total_price: integer('total_price').notNull().default(0),
   is_paid: boolean('is_paid').default(false),
-  payment_method: payment_method_enum('payment_method'),
+  payment_method: payment_method_enum('payment_method').default('cash'),
   ordered_at: timestamp('ordered_at').defaultNow(),
   updated_at: timestamp('updated_at').defaultNow(),
 });
@@ -49,5 +49,5 @@ export const order_item = pgTable('order-item', {
   price_snapshot: integer('price_snapshot').notNull(),
   quantity: integer('quantity').notNull(),
   subtotal: integer('subtotal').notNull(),
-  created_at: timestamp('created_at'),
+  created_at: timestamp('created_at').defaultNow(),
 });
