@@ -1,24 +1,22 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DRIZZLE } from 'src/drizzle/drizzle.module';
 import * as schema from '../drizzle/schema/schema';
-import { eq, inArray } from 'drizzle-orm';
+import { inArray } from 'drizzle-orm';
+import { CreateOrderDto } from './dto/createorder.dto';
 
 @Injectable()
 export class OrderService {
   constructor(@Inject(DRIZZLE) private db: NodePgDatabase<typeof schema>) {}
 
-  async createOrder(orderData: any, userId: string) {
+  async createOrder(orderData: CreateOrderDto, userId: string) {
     const menu = await this.db
       .select()
       .from(schema.menu_item)
       .where(
         inArray(
           schema.menu_item.id,
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-          orderData.items.map((item: any) => item.menu_item_id),
+          orderData.items.map((item) => item.menu_item_id),
         ),
       );
 
@@ -30,14 +28,12 @@ export class OrderService {
       }
     }
     const menuMap = new Map<string, (typeof menu)[0]>();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    menu.forEach((item: any) => menuMap.set(item.id, item));
+    menu.forEach((item) => menuMap.set(item.id, item));
 
     return await this.db.transaction(async (tx) => {
       const [orderGroup] = await tx
         .insert(schema.order)
         .values({
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           table_id: orderData.table_id,
           order_taken_by: userId,
         })
