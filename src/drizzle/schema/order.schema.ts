@@ -46,6 +46,7 @@ export const order_item = pgTable('order-item', {
     .references(() => menu_item.id)
     .notNull(),
   item_name: varchar('item_name').notNull(),
+  status: statusEnum('status').notNull().default('pending'),
   price_snapshot: integer('price_snapshot').notNull(),
   quantity: integer('quantity').notNull(),
   subtotal: integer('subtotal').notNull(),

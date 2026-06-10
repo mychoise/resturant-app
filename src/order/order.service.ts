@@ -4,6 +4,7 @@ import { DRIZZLE } from 'src/drizzle/drizzle.module';
 import * as schema from '../drizzle/schema/schema';
 import { inArray } from 'drizzle-orm';
 import { CreateOrderDto } from './dto/createorder.dto';
+import { eq } from 'drizzle-orm';
 
 @Injectable()
 export class OrderService {
@@ -57,4 +58,57 @@ export class OrderService {
       return { ...orderGroup, total_price: totalPrice };
     });
   }
+  async changeStatus(
+    order_id: string,
+    order_item_id: string,
+    status: 'pending' | 'preparing' | 'ready' | 'served',
+  ) {
+    try {
+      let neededStatus: 'pending' | 'preparing' | 'ready' | 'served' =
+        'pending';
+      const [updatedItem] = await this.db
+        .update(schema.order_item)
+        .set({
+          status,
+        })
+        .where(eq(schema.order_item.id, order_item_id))
+        .returning();
+
+      const allItems = await this.db
+        .select()
+        .from(schema.order_item)
+        .where(eq(schema.order_item.order_id, order_id));
+
+      if (allItems.every((item) => item.status === 'served')) {
+        neededStatus = 'served';
+      } else if (allItems.every((item) => item.status === 'ready')) {
+        neededStatus = 'ready';
+      } else if (allItems.every((item) => item.status === 'preparing')) {
+        neededStatus = 'preparing';
+      } else {
+        neededStatus = 'pending';
+      }
+
+      await this.db
+        .update(schema.order)
+        .set({
+          status: neededStatus,
+        })
+        .where(eq(schema.order.id, order_id));
+
+      return {
+        success: true,
+        message: `Order item status updated to ${status}`,
+        data: updatedItem,
+      };
+    } catch (error) {
+      console.log('error in changeStatus', error);
+    }
+  }
+
+  //   async addInPreviousOrder(
+  //     orderData: CreateOrderDto,
+  //     userId: string,
+  //     order_id: string,
+  //   ) {}
 }
