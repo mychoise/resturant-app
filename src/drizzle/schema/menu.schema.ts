@@ -1,11 +1,11 @@
-import { text } from 'drizzle-orm/pg-core';
+import { integer, text } from 'drizzle-orm/pg-core';
 import { pgTable, uuid, boolean, timestamp, index } from 'drizzle-orm/pg-core';
 
 export const menu_category = pgTable(
   'menu_category',
   {
     id: uuid('id').primaryKey().notNull().defaultRandom(),
-    name: uuid('name').unique().notNull(),
+    name: text('name').unique().notNull(),
     is_active: boolean('is_active').notNull().default(true),
     created_at: timestamp('created_at').defaultNow(),
   },
@@ -21,7 +21,7 @@ export const menu_item = pgTable(
       .notNull(),
     name: text('name').notNull(),
     description: text('description'),
-    price: text('price').notNull(),
+    price: integer('price').notNull(),
     is_available: boolean('is_available').notNull().default(true),
     created_at: timestamp('created_at').defaultNow(),
   },

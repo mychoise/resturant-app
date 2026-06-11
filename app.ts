@@ -1,140 +1,134 @@
-import {
-  WebSocketGateway,
-  WebSocketServer,
-  SubscribeMessage,
-  MessageBody,
-  ConnectedSocket,
-  OnGatewayConnection,
-  OnGatewayDisconnect,
-} from '@nestjs/websockets';
-import { UsePipes, ValidationPipe } from '@nestjs/common';
-import { Server, Socket } from 'socket.io';
-import { JwtService } from '@nestjs/jwt';
+// import {
+//   WebSocketGateway,
+//   WebSocketServer,
+//   SubscribeMessage,
+//   MessageBody,
+//   ConnectedSocket,
+//   OnGatewayConnection,
+//   OnGatewayDisconnect,
+// } from '@nestjs/websockets';
+// import { UsePipes, ValidationPipe } from '@nestjs/common';
+// import { Server, Socket } from 'socket.io';
+// import { JwtService } from '@nestjs/jwt';
 
-import { OrderService } from './order.service';
+// @UsePipes(new ValidationPipe())
+// @WebSocketGateway({ cors: { origin: '*' } })
+// export class OrderGateway implements OnGatewayConnection, OnGatewayDisconnect {
+//   @WebSocketServer()
+//   server: Server;
 
-import { NewOrderDto } from './dto/new-order.dto';
+//   private connectedUsers = new Map<string, string>(); // userId -> socketId
 
-import { UpdateStatusDto } from './dto/update-status.dto';
+//   constructor(
+//     private orderService: OrderService,
 
-@UsePipes(new ValidationPipe())
-@WebSocketGateway({ cors: { origin: '*' } })
-export class OrderGateway implements OnGatewayConnection, OnGatewayDisconnect {
-  @WebSocketServer()
-  server: Server;
+//     private jwtService: JwtService,
+//   ) {}
 
-  private connectedUsers = new Map<string, string>(); // userId -> socketId
+//   // ─── connection ───────────────────────────────────
 
-  constructor(
-    private orderService: OrderService,
+//   handleConnection(client: Socket) {
+//     const token = client.handshake.auth?.token;
 
-    private jwtService: JwtService,
-  ) {}
+//     try {
+//       const payload = this.jwtService.verify(token, {
+//         secret: process.env.JWT_ACCESS_SECRET,
+//       });
 
-  // ─── connection ───────────────────────────────────
+//       client.data.userId = payload.sub;
 
-  handleConnection(client: Socket) {
-    const token = client.handshake.auth?.token;
+//       client.data.role = payload.role;
 
-    try {
-      const payload = this.jwtService.verify(token, {
-        secret: process.env.JWT_ACCESS_SECRET,
-      });
+//       // store in map
 
-      client.data.userId = payload.sub;
+//       this.connectedUsers.set(payload.sub, client.id);
 
-      client.data.role = payload.role;
+//       // auto join role room
 
-      // store in map
+//       if (payload.role === 'kitchen') client.join('kitchen');
 
-      this.connectedUsers.set(payload.sub, client.id);
+//       if (payload.role === 'waiter') client.join('waiters');
+//     } catch {
+//       client.disconnect();
+//     }
+//   }
 
-      // auto join role room
+//   handleDisconnect(client: Socket) {
+//     this.connectedUsers.delete(client.data.userId);
 
-      if (payload.role === 'kitchen') client.join('kitchen');
+//     console.log('disconnected:', client.id);
+//   }
 
-      if (payload.role === 'waiter') client.join('waiters');
-    } catch {
-      client.disconnect();
-    }
-  }
+//   // ─── join table room ──────────────────────────────
 
-  handleDisconnect(client: Socket) {
-    this.connectedUsers.delete(client.data.userId);
+//   @SubscribeMessage('join:table')
+//   handleJoinTable(
+//     @MessageBody() tableId: string,
+//     @ConnectedSocket() client: Socket,
+//   ) {
+//     client.join(`table:${tableId}`);
+//     client.emit('joined', `table:${tableId}`);
+//   }
+//   // ─── waiter places order ──────────────────────────
+//   @SubscribeMessage('order:new')
+//   async handleNewOrder(
+//     @MessageBody() dto: NewOrderDto,
+//     @ConnectedSocket() client: Socket,
+//   ) {
+//     // delegate to service
+//     const order = await this.orderService.createOrder(dto, client.data.userId);
+//     // notify kitchen
+//     this.server.to('kitchen').emit('order:new', order);
+//     // notify table
+//     this.server.to(`table:${dto.tableId}`).emit('order:new', order);
+//     // confirm to waiter
+//     client.emit('order:created', order);
+//   }
 
-    console.log('disconnected:', client.id);
-  }
+//   // ─── kitchen updates status ───────────────────────
 
-  // ─── join table room ──────────────────────────────
+//   @SubscribeMessage('order:status')
+//   async handleStatusUpdate(@MessageBody() dto: UpdateStatusDto) {
+//     const order = await this.orderService.updateStatus(dto.orderId, dto.status);
 
-  @SubscribeMessage('join:table')
-  handleJoinTable(
-    @MessageBody() tableId: string,
-    @ConnectedSocket() client: Socket,
-  ) {
-    client.join(`table:${tableId}`);
-    client.emit('joined', `table:${tableId}`);
-  }
-  // ─── waiter places order ──────────────────────────
-  @SubscribeMessage('order:new')
-  async handleNewOrder(
-    @MessageBody() dto: NewOrderDto,
-    @ConnectedSocket() client: Socket,
-  ) {
-    // delegate to service
-    const order = await this.orderService.createOrder(dto, client.data.userId);
-    // notify kitchen
-    this.server.to('kitchen').emit('order:new', order);
-    // notify table
-    this.server.to(`table:${dto.tableId}`).emit('order:new', order);
-    // confirm to waiter
-    client.emit('order:created', order);
-  }
+//     // notify table
 
-  // ─── kitchen updates status ───────────────────────
+//     this.server.to(`table:${dto.tableId}`).emit('order:status', order);
 
-  @SubscribeMessage('order:status')
-  async handleStatusUpdate(@MessageBody() dto: UpdateStatusDto) {
-    const order = await this.orderService.updateStatus(dto.orderId, dto.status);
+//     // notify all waiters
 
-    // notify table
+//     this.server.to('waiters').emit('order:status', order);
+//   }
 
-    this.server.to(`table:${dto.tableId}`).emit('order:status', order);
+//   // ─── waiter marks served ──────────────────────────
+// //
+//   @SubscribeMessage('order:served')
+//   async handleOrderServed(@MessageBody() dto: UpdateStatusDto) {
+//     const order = await this.orderService.updateStatus(dto.orderId, 'served');
 
-    // notify all waiters
+//     this.server.to(`table:${dto.tableId}`).emit('order:served', order);
 
-    this.server.to('waiters').emit('order:status', order);
-  }
+//     this.server.to('kitchen').emit('order:served', order);
+//   }
 
-  // ─── waiter marks served ──────────────────────────
+//   // ─── mark payment ─────────────────────────────────
 
-  @SubscribeMessage('order:served')
-  async handleOrderServed(@MessageBody() dto: UpdateStatusDto) {
-    const order = await this.orderService.updateStatus(dto.orderId, 'served');
+//   @SubscribeMessage('order:paid')
+//   async handleOrderPaid(
+//     @MessageBody()
+//     dto: {
+//       orderId: string;
+//       tableId: string;
+//       paymentMethod: string;
+//     },
+//   ) {
+//     const order = await this.orderService.markPaid(
+//       dto.orderId,
+//       dto.paymentMethod,
+//     );
 
-    this.server.to(`table:${dto.tableId}`).emit('order:served', order);
+//     this.server.to(`table:${dto.tableId}`).emit('order:paid', order);
 
-    this.server.to('kitchen').emit('order:served', order);
-  }
-
-  // ─── mark payment ─────────────────────────────────
-
-  @SubscribeMessage('order:paid')
-  async handleOrderPaid(
-    @MessageBody()
-    dto: {
-      orderId: string;
-      tableId: string;
-      paymentMethod: string;
-    },
-  ) {
-    const order = await this.orderService.markPaid(
-      dto.orderId,
-      dto.paymentMethod,
-    );
-
-    this.server.to(`table:${dto.tableId}`).emit('order:paid', order);
-
-    this.server.to('waiters').emit('order:paid', order);
-  }
-}
+//     this.server.to('waiters').emit('order:paid', order);
+//   }
+// }
