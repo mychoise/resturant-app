@@ -36,7 +36,6 @@ export class OrderService {
         .insert(schema.order)
         .values({
           table_id: orderData.table_id,
-          order_taken_by: userId,
         })
         .returning();
       let totalPrice = 0;
@@ -45,6 +44,7 @@ export class OrderService {
         const [orderItem] = await tx
           .insert(schema.order_item)
           .values({
+            order_taken_by: userId,
             order_id: orderGroup.id,
             menu_item_id: item.menu_item_id,
             item_name: menuItem?.name || 'Unknown Item',
@@ -110,5 +110,51 @@ export class OrderService {
   //     orderData: CreateOrderDto,
   //     userId: string,
   //     order_id: string,
-  //   ) {}
+  //   ) {
+  //     const menu = await this.db
+  //       .select()
+  //       .from(schema.menu_item)
+  //       .where(
+  //         inArray(
+  //           schema.menu_item.id,
+  //           orderData.items.map((item) => item.menu_item_id),
+  //         ),
+  //       );
+
+  //     for (const item of menu) {
+  //       if (!item.is_available) {
+  //         throw new NotFoundException(
+  //           `Menu item with ID ${item.id} is not availableat the moment`,
+  //         );
+  //       }
+  //     }
+  //     const menuMap = new Map<string, (typeof menu)[0]>();
+  //     menu.forEach((item) => menuMap.set(item.id, item));
+
+  //     let totalPrice = 0;
+
+  //     for (const item of orderData.items) {
+  //       const menuItem = menuMap.get(item.menu_item_id);
+  //       const [orderItem] = await this.db
+  //         .insert(schema.order_item)
+  //         .values({
+  //           order_taken_by: userId,
+  //           order_id: order_id,
+  //           menu_item_id: item.menu_item_id,
+  //           item_name: menuItem?.name || 'Unknown Item',
+  //           price_snapshot: parseInt(menuItem?.price || '0', 10),
+  //           quantity: item.quantity,
+  //           subtotal: parseInt(menuItem?.price || '0', 10) * item.quantity,
+  //         })
+  //         .returning();
+  //       totalPrice += orderItem.subtotal;
+
+  //       await this.db
+  //         .update(schema.order)
+  //         .set({
+  //           total_price: totalPrice,
+  //         })
+  //         .where(eq(schema.order.id, order_id));
+  //     }
+  //   }
 }

@@ -26,9 +26,6 @@ export const order = pgTable('order', {
   table_id: uuid('table_id')
     .references(() => diningTable.id)
     .notNull(),
-  order_taken_by: uuid('order_taken_by')
-    .references(() => users.id)
-    .notNull(),
   status: statusEnum('status').notNull().default('pending'),
   total_price: integer('total_price').notNull().default(0),
   is_paid: boolean('is_paid').default(false),
@@ -44,6 +41,9 @@ export const order_item = pgTable('order-item', {
     .notNull(),
   menu_item_id: uuid('menu_item_id')
     .references(() => menu_item.id)
+    .notNull(),
+  order_taken_by: uuid('order_taken_by')
+    .references(() => users.id)
     .notNull(),
   item_name: varchar('item_name').notNull(),
   status: statusEnum('status').notNull().default('pending'),
