@@ -4,14 +4,25 @@ import {
   MessageBody,
   SubscribeMessage,
   WebSocketGateway,
+  WebSocketServer,
 } from '@nestjs/websockets';
 import { Socket } from 'socket.io';
+import { CreateOrderDto } from './dto/createorder.dto';
+import { OrderService } from './order.service';
+import { Server } from 'http';
+import { UsePipes, ValidationPipe } from '@nestjs/common';
 
+@UsePipes(new ValidationPipe())
 @WebSocketGateway()
 export class OrderGateway {
   userMap = new Map<string, string>();
+  @WebSocketServer()
+  server: Server;
 
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly orderService: OrderService,
+  ) {}
 
   handleConnection(@ConnectedSocket() client: Socket) {
     const token = client.handshake?.query?.token as string;
@@ -51,11 +62,95 @@ export class OrderGateway {
     console.log('Current user map:', this.userMap);
   }
 
-  @SubscribeMessage('message')
-  handleMessage(
+  @SubscribeMessage('join:table')
+  handleJoinTable(
+    @MessageBody() tableId: string,
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: any,
-  ): string {
-    return 'Hello world!';
+  ) {
+    client.join(`table:${tableId}`);
+    client.emit('joined:table', tableId);
+  }
+  @SubscribeMessage('order:new')
+  async handleNewOrder(
+    @MessageBody() dto: CreateOrderDto,
+    @ConnectedSocket() client: Socket,
+  ) {
+    console.log('Received new order:', dto);
+    console.log('From client:', client.id);
+    const userId = client.data.userId;
+    const order = await this.orderService.createOrder(dto, userId);
+    client.to('kitchen').emit('order:new', order);
+    client.to('waiters').emit('order:new', order);
+    client.to(`table:${dto.table_id}`).emit('order:new', order);
+    client.emit('order:created', order);
+  }
+
+  @SubscribeMessage('order:update')
+  async handleUpdateOrder(
+    @MessageBody()
+    data: {
+      order_item_id: string;
+      status: 'pending' | 'preparing' | 'ready' | 'served';
+    },
+    @ConnectedSocket() client: Socket,
+  ) {
+    console.log(
+      'Received order update for',
+      data.order_item_id,
+      'to status',
+      data.status,
+    );
+
+    const updatedOrder = await this.orderService.changeStatus(
+      data.order_item_id,
+      data.status,
+    );
+    client.to('waiters').emit('order:update', updatedOrder);
+    client.emit('order:update', updatedOrder);
+  }
+  @SubscribeMessage('order:served')
+  async handleChangeOrderToSeved(
+    @MessageBody()
+    data: {
+      order_item_id: string;
+    },
+    @ConnectedSocket() client: Socket,
+  ) {
+    console.log(
+      'Received order update for',
+      data.order_item_id,
+      'to status',
+      'served',
+    );
+
+    const updatedOrder = await this.orderService.changeStatus(
+      data.order_item_id,
+      'served',
+    );
+    client.to('waiters').emit('order:served', updatedOrder);
+    client.to('kitchen').emit('order:served', updatedOrder);
+    client.emit('order:served', updatedOrder);
+  }
+
+  @SubscribeMessage('order:addToPrevious')
+  async handleAddToPervious(
+    @MessageBody()
+    data: {
+      dto: CreateOrderDto;
+      userId: string;
+      order_id: string;
+    },
+    @ConnectedSocket() client: Socket,
+  ) {
+    console.log('added order received for', data.dto);
+    const order = await this.orderService.addInPreviousOrder(
+      data.dto,
+      data.userId,
+      data.order_id,
+    );
+    client.to('kitchen').emit('order:new', order);
+    client.to('waiters').emit('order:new', order);
+    client.to(`table:${data.dto.table_id}`).emit('order:new', order);
+    client.emit('order:created', order);
   }
 }
