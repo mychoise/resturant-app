@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, Res, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { registerDto, Role } from './dto/register.dto';
 import { loginDto } from './dto/login.dto';
@@ -7,9 +15,13 @@ import { User } from './decorators/user.decorator';
 import { RolesGuard } from './guards/roles.guard';
 import { Roles } from './decorators/roles.decorator';
 import type { Response } from 'express';
+import { JwtService } from '@nestjs/jwt';
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly jwtService: JwtService,
+  ) {}
 
   @Post('register')
   async register(
@@ -47,6 +59,7 @@ export class AuthController {
   @Get('profile')
   @UseGuards(JwtAuthGuard)
   getProfile(@User() user: any) {
+    console.log('User in getProfile:', user);
     return user;
   }
 

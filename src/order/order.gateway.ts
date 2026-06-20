@@ -11,6 +11,7 @@ import { CreateOrderDto } from './dto/createorder.dto';
 import { OrderService } from './order.service';
 import { Server } from 'http';
 import { UsePipes, ValidationPipe } from '@nestjs/common';
+import * as cookie from 'cookie';
 
 @UsePipes(new ValidationPipe())
 @WebSocketGateway({ cors: { origin: '*' } })
@@ -25,7 +26,14 @@ export class OrderGateway {
   ) {}
 
   handleConnection(@ConnectedSocket() client: Socket) {
-    const token = client.handshake?.query?.token as string;
+    const cookieHeader = client?.handshake?.headers?.cookie;
+    if (!cookieHeader) {
+      console.log('No cookie provided, disconnecting client:', client.id);
+      client.disconnect();
+      return;
+    }
+    const cookies = cookie.parse(cookieHeader);
+    const token = cookies.token;
     if (!token) {
       console.log('No token provided, disconnecting client:', client.id);
       client.disconnect();

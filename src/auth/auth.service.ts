@@ -92,6 +92,7 @@ export class AuthService {
       .select()
       .from(schema.users)
       .where(eq(schema.users.email, email));
+    console.log(user);
 
     if (!user) {
       throw new NotFoundException('User not found');
@@ -106,6 +107,7 @@ export class AuthService {
     const saltRounds = parseInt(this.configService.get<string>('SALT_ROUNDS')!);
     return await bcrypt.hash(password, saltRounds);
   }
+
   generateAccessToken(user: schema.User): string {
     const payload = {
       sub: user.id,
