@@ -4,7 +4,7 @@ import { DRIZZLE } from 'src/drizzle/drizzle.module';
 import * as schema from '../drizzle/schema/schema';
 import { inArray } from 'drizzle-orm';
 import { CreateOrderDto } from './dto/createorder.dto';
-import { eq } from 'drizzle-orm';
+import { eq, gte } from 'drizzle-orm';
 
 @Injectable()
 export class OrderService {
@@ -168,5 +168,36 @@ export class OrderService {
         msg: `Items added successfully: ${itemNames}`,
       };
     });
+  }
+
+  async getAllOrders() {
+    // const order = await this.db.select().from(schema.order);
+    // const orderItems = await this.db.select().from(schema.order_item);
+
+    const allorder = await this.db
+      .select()
+      .from(schema.order)
+      .innerJoin(
+        schema.order_item,
+        eq(schema.order.id, schema.order_item.order_id),
+      )
+      .where(
+        gte(schema.order.ordered_at, new Date(Date.now() - 8 * 60 * 60 * 1000)),
+      );
+
+    const ordersMap = new Map<string, any>();
+
+    for (const row of allorder) {
+      const orderRow = row.order;
+      const itemRow = row['order-item'];
+
+      if (!ordersMap.has(orderRow.id)) {
+        ordersMap.set(orderRow.id, { ...orderRow, items: [] });
+      }
+
+      ordersMap.get(orderRow.id).items.push(itemRow);
+    }
+
+    return { orders: Array.from(ordersMap.values()) };
   }
 }
