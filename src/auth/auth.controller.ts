@@ -29,8 +29,19 @@ export class AuthController {
   }
 
   @Post('login')
-  async login(@Body() data: loginDto) {
-    return this.authService.login(data);
+  async login(
+    @Body() data: loginDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { token, ...result } = await this.authService.login(data);
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    return result;
   }
 
   @Get('profile')

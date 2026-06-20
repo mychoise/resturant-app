@@ -11,10 +11,8 @@ import { Type } from 'class-transformer';
 export class CreateOrderItemDto {
   @IsUUID()
   menu_item_id: string;
-
   @IsString()
   item_name: string;
-
   @IsNumber()
   quantity: number;
 }

@@ -13,7 +13,7 @@ import { Server } from 'http';
 import { UsePipes, ValidationPipe } from '@nestjs/common';
 
 @UsePipes(new ValidationPipe())
-@WebSocketGateway()
+@WebSocketGateway({ cors: { origin: '*' } })
 export class OrderGateway {
   userMap = new Map<string, string>();
   @WebSocketServer()
@@ -31,29 +31,34 @@ export class OrderGateway {
       client.disconnect();
       return;
     }
-    const verifiedToken = this.jwtService.verify(token, {
-      secret: process.env.JWT_SECRET,
-    });
+    try {
+      const verifiedToken = this.jwtService.verify(token, {
+        secret: process.env.JWT_SECRET,
+      });
 
-    console.log('verifiedToken:', verifiedToken);
+      console.log('verifiedToken:', verifiedToken);
 
-    if (!verifiedToken) {
-      console.log('Invalid token, disconnecting client:', client.id);
+      if (!verifiedToken) {
+        console.log('Invalid token, disconnecting client:', client.id);
+        client.disconnect();
+        return;
+      }
+
+      client.data.userId = verifiedToken.sub;
+      client.data.role = verifiedToken.role;
+      this.userMap.set(verifiedToken.sub, client.id);
+
+      if (verifiedToken.role === 'waiter') client.join('waiters');
+      if (verifiedToken.role === 'kitchen') client.join('kitchen');
+
+      console.log('Client connected:', client.id);
+      console.log('Current user map:', this.userMap);
+      console.log('Current waiters room:', client.rooms.has('waiters'));
+      console.log('Current kitchen room:', client.rooms.has('kitchen'));
+    } catch (error) {
+      console.log('Error during connection:', error);
       client.disconnect();
-      return;
     }
-
-    client.data.userId = verifiedToken.sub;
-    client.data.role = verifiedToken.role;
-    this.userMap.set(verifiedToken.sub, client.id);
-
-    if (verifiedToken.role === 'waiter') client.join('waiters');
-    if (verifiedToken.role === 'kitchen') client.join('kitchen');
-
-    console.log('Client connected:', client.id);
-    console.log('Current user map:', this.userMap);
-    console.log('Current waiters room:', client.rooms.has('waiters'));
-    console.log('Current kitchen room:', client.rooms.has('kitchen'));
   }
 
   handleDisconnect(@ConnectedSocket() client: Socket) {
@@ -67,22 +72,31 @@ export class OrderGateway {
     @MessageBody() tableId: string,
     @ConnectedSocket() client: Socket,
   ) {
+    console.log('table id', tableId);
+    console.log(
+      `Client ${client.id} joining table room: table:${JSON.stringify(tableId)}`,
+    );
     client.join(`table:${tableId}`);
     client.emit('joined:table', tableId);
   }
+
   @SubscribeMessage('order:new')
   async handleNewOrder(
     @MessageBody() dto: CreateOrderDto,
     @ConnectedSocket() client: Socket,
   ) {
-    console.log('Received new order:', dto);
-    console.log('From client:', client.id);
-    const userId = client.data.userId;
-    const order = await this.orderService.createOrder(dto, userId);
-    client.to('kitchen').emit('order:new', order);
-    client.to('waiters').emit('order:new', order);
-    client.to(`table:${dto.table_id}`).emit('order:new', order);
-    client.emit('order:created', order);
+    try {
+      console.log('Received new order:', dto);
+      console.log('From client:', client.id);
+      const userId = client.data.userId;
+      const order = await this.orderService.createOrder(dto, userId);
+      client.to('kitchen').emit('order:new', order);
+      client.to('waiters').emit('order:new', order);
+      client.to(`table:${dto.table_id}`).emit('order:new', order);
+      client.emit('order:created', order);
+    } catch (error) {
+      console.log('failed to add', error);
+    }
   }
 
   @SubscribeMessage('order:update')
