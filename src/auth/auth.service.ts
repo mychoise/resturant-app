@@ -56,6 +56,7 @@ export class AuthService {
   }
 
   async login(data: login) {
+    console.log('Attempting login for email:', data.email);
     const [user] = await this.db
       .select()
       .from(schema.users)
@@ -92,7 +93,6 @@ export class AuthService {
       .select()
       .from(schema.users)
       .where(eq(schema.users.email, email));
-    console.log(user);
 
     if (!user) {
       throw new NotFoundException('User not found');
@@ -109,6 +109,7 @@ export class AuthService {
   }
 
   generateAccessToken(user: schema.User): string {
+    console.log('Generating access token for user:', user);
     const payload = {
       sub: user.id,
       name: user.name,

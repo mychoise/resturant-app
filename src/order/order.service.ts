@@ -39,8 +39,10 @@ export class OrderService {
         })
         .returning();
       let totalPrice = 0;
+      let insertedItem: any = [];
       for (const item of orderData.items) {
         const menuItem = menuMap.get(item.menu_item_id);
+
         const [orderItem] = await tx
           .insert(schema.order_item)
           .values({
@@ -54,6 +56,7 @@ export class OrderService {
           })
           .returning();
         totalPrice += orderItem.subtotal;
+        insertedItem.push(orderItem);
       }
       const [updatedOrder] = await tx
         .update(schema.order)
@@ -65,13 +68,18 @@ export class OrderService {
       const itemNames = orderData.items
         .map((item: any) => menuMap.get(item.menu_item_id)?.name)
         .join(', ');
+
       return {
-        order: updatedOrder,
+        order: {
+          ...updatedOrder,
+          items: insertedItem,
+        },
         total_price: totalPrice,
         msg: `Order created successfully for ${itemNames}`,
       };
     });
   }
+
   async changeStatus(
     order_item_id: string,
     status: 'pending' | 'preparing' | 'ready' | 'served',

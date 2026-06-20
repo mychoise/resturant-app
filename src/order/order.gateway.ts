@@ -14,7 +14,12 @@ import { UsePipes, ValidationPipe } from '@nestjs/common';
 import * as cookie from 'cookie';
 
 @UsePipes(new ValidationPipe())
-@WebSocketGateway({ cors: { origin: '*' } })
+@WebSocketGateway({
+  cors: {
+    origin: 'http://localhost:5173', // your exact frontend URL
+    credentials: true,
+  },
+})
 export class OrderGateway {
   userMap = new Map<string, string>();
   @WebSocketServer()
@@ -26,6 +31,11 @@ export class OrderGateway {
   ) {}
 
   handleConnection(@ConnectedSocket() client: Socket) {
+    console.log('Client attempting to connect:', client.handshake.headers);
+    console.log(
+      'RAW HEADERS:',
+      JSON.stringify(client.handshake.headers, null, 2),
+    );
     const cookieHeader = client?.handshake?.headers?.cookie;
     if (!cookieHeader) {
       console.log('No cookie provided, disconnecting client:', client.id);
@@ -98,10 +108,13 @@ export class OrderGateway {
       console.log('From client:', client.id);
       const userId = client.data.userId;
       const order = await this.orderService.createOrder(dto, userId);
+      console.log('Order created:', order);
       client.to('kitchen').emit('order:new', order);
       client.to('waiters').emit('order:new', order);
       client.to(`table:${dto.table_id}`).emit('order:new', order);
       client.emit('order:created', order);
+
+      return order;
     } catch (error) {
       console.log('failed to add', error);
     }
@@ -127,8 +140,9 @@ export class OrderGateway {
       data.order_item_id,
       data.status,
     );
-    client.to('waiters').emit('order:update', updatedOrder);
-    client.emit('order:update', updatedOrder);
+    client.to('waiters').emit('order:update', updatedOrder?.data);
+    client.emit('order:update', updatedOrder?.data);
+    return updatedOrder;
   }
   @SubscribeMessage('order:served')
   async handleChangeOrderToSeved(
@@ -149,9 +163,10 @@ export class OrderGateway {
       data.order_item_id,
       'served',
     );
-    client.to('waiters').emit('order:served', updatedOrder);
-    client.to('kitchen').emit('order:served', updatedOrder);
-    client.emit('order:served', updatedOrder);
+    client.to('waiters').emit('order:served', updatedOrder?.data);
+    client.to('kitchen').emit('order:served', updatedOrder?.data);
+    client.emit('order:served', updatedOrder?.data);
+    return updatedOrder;
   }
 
   @SubscribeMessage('order:addToPrevious')
@@ -174,5 +189,6 @@ export class OrderGateway {
     client.to('waiters').emit('order:new', order);
     client.to(`table:${data.dto.table_id}`).emit('order:new', order);
     client.emit('order:created', order);
+    return order;
   }
 }

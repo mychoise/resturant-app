@@ -9,7 +9,8 @@ async function bootstrap() {
   const httpAdapterHost = app.get(HttpAdapterHost);
   app.useGlobalFilters(new CatchEverythingFilter(httpAdapterHost));
   app.enableCors({
-    origin: '*',
+    origin: 'http://localhost:5173', // your exact frontend URL
+    credentials: true,
   });
   app.useGlobalPipes(
     new ValidationPipe({
