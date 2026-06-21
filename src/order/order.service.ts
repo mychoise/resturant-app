@@ -5,10 +5,14 @@ import * as schema from '../drizzle/schema/schema';
 import { inArray } from 'drizzle-orm';
 import { CreateOrderDto } from './dto/createorder.dto';
 import { eq, gte } from 'drizzle-orm';
+import { TableService } from 'src/table/table.service';
 
 @Injectable()
 export class OrderService {
-  constructor(@Inject(DRIZZLE) private db: NodePgDatabase<typeof schema>) {}
+  constructor(
+    @Inject(DRIZZLE) private db: NodePgDatabase<typeof schema>,
+    private readonly tableService: TableService,
+  ) {}
 
   async createOrder(orderData: CreateOrderDto, userId: string) {
     const menu = await this.db
@@ -32,6 +36,14 @@ export class OrderService {
     menu.forEach((item) => menuMap.set(item.id, item));
 
     return await this.db.transaction(async (tx) => {
+      const [table] = await tx
+        .update(schema.diningTable)
+        .set({
+          is_occupied: true,
+        })
+        .where(eq(schema.diningTable.id, orderData.table_id))
+        .returning();
+
       const [orderGroup] = await tx
         .insert(schema.order)
         .values({
@@ -75,6 +87,7 @@ export class OrderService {
           items: insertedItem,
         },
         total_price: totalPrice,
+        table,
         msg: `Order created successfully for ${itemNames}`,
       };
     });

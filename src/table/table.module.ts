@@ -6,5 +6,6 @@ import { JwtAuthGuard } from 'src/auth/guards/access.guard';
 @Module({
   controllers: [TableController],
   providers: [TableService, JwtAuthGuard],
+  exports: [TableService],
 })
 export class TableModule {}
