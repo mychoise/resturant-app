@@ -3,6 +3,7 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { login, register } from './interface/auth.interface';
@@ -72,7 +73,7 @@ export class AuthService {
     );
 
     if (!isPasswordValid) {
-      throw new Error('Invalid email or password');
+      throw new UnauthorizedException('Invalid email or password');
     }
 
     const accessToken = this.generateAccessToken(user);
@@ -80,6 +81,7 @@ export class AuthService {
     return {
       msg: 'Login successful',
       user: {
+        id: user.id,
         email: user.email,
         name: user.name,
         role: user.role,
