@@ -12,6 +12,7 @@ export class TableService {
       .select()
       .from(schema.diningTable)
       .orderBy(asc(schema.diningTable.table_number));
+
     return tables;
   }
   async changeStatus(tableId: string, is_occupied: boolean) {

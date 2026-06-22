@@ -23,7 +23,7 @@ import { OrderProcessor } from './order.processor';
     JwtAuthGuard,
     JwtService,
     TableService,
-    // OrderProcessor,
+    OrderProcessor,
   ],
 })
 export class OrderModule {}

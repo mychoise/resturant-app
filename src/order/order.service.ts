@@ -19,87 +19,98 @@ export class OrderService {
   ) {}
 
   async createOrder(orderData: CreateOrderDto, userId: string) {
-    const menu = await this.db
-      .select()
-      .from(schema.menu_item)
-      .where(
-        inArray(
-          schema.menu_item.id,
-          orderData.items.map((item) => item.menu_item_id),
-        ),
-      );
-
-    for (const item of menu) {
-      if (!item.is_available) {
-        throw new NotFoundException(
-          `Menu item with ID ${item.id} is not available`,
+    try {
+      const menu = await this.db
+        .select()
+        .from(schema.menu_item)
+        .where(
+          inArray(
+            schema.menu_item.id,
+            orderData.items.map((item) => item.menu_item_id),
+          ),
         );
+
+      for (const item of menu) {
+        if (!item.is_available) {
+          throw new NotFoundException(
+            `Menu item with ID ${item.id} is not available`,
+          );
+        }
       }
-    }
-    const menuMap = new Map<string, (typeof menu)[0]>();
-    menu.forEach((item) => menuMap.set(item.id, item));
+      const menuMap = new Map<string, (typeof menu)[0]>();
+      menu.forEach((item) => menuMap.set(item.id, item));
 
-    return await this.db.transaction(async (tx) => {
-      const table = await this.tableService.changeStatus(
-        orderData.table_id,
-        true,
-      );
-      const [orderGroup] = await tx
-        .insert(schema.order)
-        .values({
-          table_id: orderData.table_id,
-        })
-        .returning();
-      let totalPrice = 0;
-      let insertedItem: any = [];
-      for (const item of orderData.items) {
-        const menuItem = menuMap.get(item.menu_item_id);
-
-        const [orderItem] = await tx
-          .insert(schema.order_item)
+      return await this.db.transaction(async (tx) => {
+        const table = await this.tableService.changeStatus(
+          orderData.table_id,
+          true,
+        );
+        // console.log('Table status updated:', table);
+        const [orderGroup] = await tx
+          .insert(schema.order)
           .values({
-            order_taken_by: userId,
-            order_id: orderGroup.id,
-            menu_item_id: item.menu_item_id,
-            item_name: menuItem?.name || 'Unknown Item',
-            price_snapshot: menuItem?.price || 0,
-            quantity: item.quantity,
-            subtotal: (menuItem?.price || 0) * item.quantity,
+            table_id: orderData.table_id,
+            // table_number: table.table_number,
           })
           .returning();
-        totalPrice += orderItem.subtotal;
-        insertedItem.push(orderItem);
-      }
-      const [updatedOrder] = await tx
-        .update(schema.order)
-        .set({
+        let totalPrice = 0;
+        let insertedItem: any = [];
+        for (const item of orderData.items) {
+          const menuItem = menuMap.get(item.menu_item_id);
+
+          const [orderItem] = await tx
+            .insert(schema.order_item)
+            .values({
+              order_taken_by: userId,
+              order_id: orderGroup.id,
+              menu_item_id: item.menu_item_id,
+              item_name: menuItem?.name || 'Unknown Item',
+              price_snapshot: menuItem?.price || 0,
+              quantity: item.quantity,
+              subtotal: (menuItem?.price || 0) * item.quantity,
+            })
+            .returning();
+          totalPrice += orderItem.subtotal;
+          insertedItem.push(orderItem);
+        }
+        const [updatedOrder] = await tx
+          .update(schema.order)
+          .set({
+            total_price: totalPrice,
+          })
+          .where(eq(schema.order.id, orderGroup.id))
+          .returning();
+        const itemNames = orderData.items
+          .map((item: any) => menuMap.get(item.menu_item_id)?.name)
+          .join(', ');
+
+        const scheduler = await this.orderQueue.upsertJobScheduler(
+          `alert-${orderGroup.id}`, // unique per order
+          { every: 60 * 1000 }, // every 1 minute
+          {
+            name: 'provide:alert',
+            data: {
+              orderId: orderGroup.id,
+              tableNumber: table.table_number,
+            },
+          },
+        );
+
+        console.log('scheduled task with', scheduler);
+
+        return {
+          order: {
+            ...updatedOrder,
+            items: insertedItem,
+          },
           total_price: totalPrice,
-        })
-        .where(eq(schema.order.id, orderGroup.id))
-        .returning();
-      const itemNames = orderData.items
-        .map((item: any) => menuMap.get(item.menu_item_id)?.name)
-        .join(', ');
-
-      await this.orderQueue.add(
-        'provide:alert',
-        {
-          orderId: orderGroup.id,
-          tableNumber: table.table_number,
-        },
-        { delay: 10 * 60 * 1000 },
-      ); // Delay of 10 minutes
-
-      return {
-        order: {
-          ...updatedOrder,
-          items: insertedItem,
-        },
-        total_price: totalPrice,
-        table,
-        msg: `Order created successfully for ${itemNames}`,
-      };
-    });
+          table,
+          msg: `Order created successfully for ${itemNames}`,
+        };
+      });
+    } catch (error) {
+      console.log('error in createOrder', error);
+    }
   }
 
   async changeStatus(
@@ -114,6 +125,32 @@ export class OrderService {
         })
         .where(eq(schema.order_item.id, order_item_id))
         .returning();
+
+      const result = await this.db
+        .select()
+        .from(schema.order_item)
+        .where(eq(schema.order_item.order_id, updatedItem.order_id));
+
+      const statusPriority = (s) => {
+        if (s === 'pending') return 0;
+        if (s === 'preparing') return 1;
+        if (s === 'ready') return 2;
+        if (s === 'served') return 3;
+        return 4;
+      };
+
+      const overallStatus = result.reduce((lowest, row) => {
+        return statusPriority(row.status) < statusPriority(lowest)
+          ? row.status
+          : lowest;
+      }, result[0].status);
+
+      console.log('Overall order status:', overallStatus);
+
+      await this.db
+        .update(schema.order)
+        .set({ status: overallStatus })
+        .where(eq(schema.order.id, updatedItem.order_id));
 
       return {
         success: true,
@@ -193,9 +230,6 @@ export class OrderService {
   }
 
   async getAllOrders() {
-    // const order = await this.db.select().from(schema.order);
-    // const orderItems = await this.db.select().from(schema.order_item);
-
     const allorder = await this.db
       .select()
       .from(schema.order)
@@ -203,20 +237,27 @@ export class OrderService {
         schema.order_item,
         eq(schema.order.id, schema.order_item.order_id),
       )
+      .innerJoin(
+        schema.diningTable,
+        eq(schema.order.table_id, schema.diningTable.id),
+      )
       .where(
         gte(schema.order.ordered_at, new Date(Date.now() - 8 * 60 * 60 * 1000)),
       );
 
     const ordersMap = new Map<string, any>();
-
     for (const row of allorder) {
       const orderRow = row.order;
       const itemRow = row['order-item'];
+      const tableRow = row.diningTable; // ✅ add this
 
       if (!ordersMap.has(orderRow.id)) {
-        ordersMap.set(orderRow.id, { ...orderRow, items: [] });
+        ordersMap.set(orderRow.id, {
+          ...orderRow,
+          table_number: tableRow.table_number, // ✅ add this
+          items: [],
+        });
       }
-
       ordersMap.get(orderRow.id).items.push(itemRow);
     }
 

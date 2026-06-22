@@ -27,6 +27,7 @@ export const order = pgTable('order', {
     .references(() => diningTable.id)
     .notNull(),
   status: statusEnum('status').notNull().default('pending'),
+  // table_number: integer('table_number').notNull(),
   total_price: integer('total_price').notNull().default(0),
   is_paid: boolean('is_paid').default(false),
   payment_method: payment_method_enum('payment_method').default('cash'),
