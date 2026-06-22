@@ -36,14 +36,10 @@ export class OrderService {
     menu.forEach((item) => menuMap.set(item.id, item));
 
     return await this.db.transaction(async (tx) => {
-      const [table] = await tx
-        .update(schema.diningTable)
-        .set({
-          is_occupied: true,
-        })
-        .where(eq(schema.diningTable.id, orderData.table_id))
-        .returning();
-
+      const table = await this.tableService.changeStatus(
+        orderData.table_id,
+        true,
+      );
       const [orderGroup] = await tx
         .insert(schema.order)
         .values({
