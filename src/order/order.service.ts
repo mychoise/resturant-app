@@ -129,7 +129,19 @@ export class OrderService {
       const result = await this.db
         .select()
         .from(schema.order_item)
-        .where(eq(schema.order_item.order_id, updatedItem.order_id));
+        .innerJoin(
+          schema.order,
+          eq(schema.order.id, schema.order_item.order_id),
+        )
+        .innerJoin(
+          schema.diningTable,
+          eq(schema.order.table_id, schema.diningTable.id),
+        );
+      // .where(eq(schema.order_item.order_id, updatedItem.order_id));
+      //
+      //
+      console.log('data udgsdiu', result);
+      const table = result[0].diningTable.table_number;
 
       const statusPriority = (s) => {
         if (s === 'pending') return 0;
@@ -140,10 +152,10 @@ export class OrderService {
       };
 
       const overallStatus = result.reduce((lowest, row) => {
-        return statusPriority(row.status) < statusPriority(lowest)
-          ? row.status
+        return statusPriority(row['order-item'].status) < statusPriority(lowest)
+          ? row['order-item'].status
           : lowest;
-      }, result[0].status);
+      }, result[0]['order-item'].status);
 
       console.log('Overall order status:', overallStatus);
 
@@ -155,7 +167,10 @@ export class OrderService {
       return {
         success: true,
         message: `Order item status updated to ${status}`,
-        data: updatedItem,
+        updatedItem: {
+          ...updatedItem,
+          table,
+        },
       };
     } catch (error) {
       console.log('error in changeStatus', error);

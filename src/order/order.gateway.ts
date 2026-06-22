@@ -140,8 +140,9 @@ export class OrderGateway {
       data.order_item_id,
       data.status,
     );
-    client.to('waiters').emit('order:update', updatedOrder?.data);
-    client.emit('order:update', updatedOrder?.data);
+    console.log('Updated order:', updatedOrder?.updatedItem);
+    client.to('waiters').emit('order:update', updatedOrder?.updatedItem);
+    client.emit('order:update', updatedOrder?.updatedItem);
     return updatedOrder;
   }
   @SubscribeMessage('order:served')
@@ -163,9 +164,9 @@ export class OrderGateway {
       data.order_item_id,
       'served',
     );
-    client.to('waiters').emit('order:served', updatedOrder?.data);
-    client.to('kitchen').emit('order:served', updatedOrder?.data);
-    client.emit('order:served', updatedOrder?.data);
+    client.to('waiters').emit('order:served', updatedOrder?.updatedItem);
+    client.to('kitchen').emit('order:served', updatedOrder?.updatedItem);
+    client.emit('order:served', updatedOrder?.updatedItem);
     return updatedOrder;
   }
 
