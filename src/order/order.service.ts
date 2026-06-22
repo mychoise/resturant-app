@@ -81,10 +81,14 @@ export class OrderService {
         .map((item: any) => menuMap.get(item.menu_item_id)?.name)
         .join(', ');
 
-      await this.orderQueue.add('provide:alert', {
-        orderId: orderGroup.id,
-        tableNumber: table.table_number,
-      });
+      await this.orderQueue.add(
+        'provide:alert',
+        {
+          orderId: orderGroup.id,
+          tableNumber: table.table_number,
+        },
+        { delay: 10 * 60 * 1000 },
+      ); // Delay of 10 minutes
 
       return {
         order: {
