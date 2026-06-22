@@ -64,7 +64,7 @@ export class AuthService {
       .where(eq(schema.users.email, data.email));
 
     if (!user) {
-      throw new Error('Invalid email or password');
+      throw new UnauthorizedException('Invalid email or password');
     }
 
     const isPasswordValid = await this.comparePassword(

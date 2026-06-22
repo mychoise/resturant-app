@@ -6,6 +6,7 @@ import { ConfigModule } from '@nestjs/config';
 import { DrizzleModule } from './drizzle/drizzle.module';
 import { OrderModule } from './order/order.module';
 import { TableModule } from './table/table.module';
+import { BullModule } from '@nestjs/bullmq';
 
 @Module({
   imports: [
@@ -14,6 +15,12 @@ import { TableModule } from './table/table.module';
     DrizzleModule,
     OrderModule,
     TableModule,
+    BullModule.forRoot({
+      connection: {
+        host: 'localhost',
+        port: 6379,
+      },
+    }),
   ],
   controllers: [AppController],
   providers: [AppService],

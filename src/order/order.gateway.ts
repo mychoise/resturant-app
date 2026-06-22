@@ -9,7 +9,7 @@ import {
 import { Socket } from 'socket.io';
 import { CreateOrderDto } from './dto/createorder.dto';
 import { OrderService } from './order.service';
-import { Server } from 'http';
+import { Server } from 'socket.io';
 import { UsePipes, ValidationPipe } from '@nestjs/common';
 import * as cookie from 'cookie';
 

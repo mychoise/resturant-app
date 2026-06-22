@@ -6,12 +6,16 @@ import { inArray } from 'drizzle-orm';
 import { CreateOrderDto } from './dto/createorder.dto';
 import { eq, gte } from 'drizzle-orm';
 import { TableService } from 'src/table/table.service';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+// import { OrderProcessor } from './order.processor';
 
 @Injectable()
 export class OrderService {
   constructor(
     @Inject(DRIZZLE) private db: NodePgDatabase<typeof schema>,
     private readonly tableService: TableService,
+    @InjectQueue('send-alert') private orderQueue: Queue,
   ) {}
 
   async createOrder(orderData: CreateOrderDto, userId: string) {
@@ -76,6 +80,11 @@ export class OrderService {
       const itemNames = orderData.items
         .map((item: any) => menuMap.get(item.menu_item_id)?.name)
         .join(', ');
+
+      await this.orderQueue.add('provide:alert', {
+        orderId: orderGroup.id,
+        tableNumber: table.table_number,
+      });
 
       return {
         order: {

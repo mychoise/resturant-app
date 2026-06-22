@@ -6,9 +6,16 @@ import { JwtAuthGuard } from 'src/auth/guards/access.guard';
 import { JwtService } from '@nestjs/jwt';
 import { TableService } from 'src/table/table.service';
 import { TableModule } from 'src/table/table.module';
+import { BullModule } from '@nestjs/bullmq';
+import { OrderProcessor } from './order.processor';
 
 @Module({
-  imports: [TableModule],
+  imports: [
+    TableModule,
+    BullModule.registerQueue({
+      name: 'send-alert',
+    }),
+  ],
   controllers: [OrderController],
   providers: [
     OrderService,
@@ -16,6 +23,7 @@ import { TableModule } from 'src/table/table.module';
     JwtAuthGuard,
     JwtService,
     TableService,
+    // OrderProcessor,
   ],
 })
 export class OrderModule {}
