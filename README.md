@@ -1,98 +1,319 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Restaurant Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+NestJS backend for a restaurant POS/kitchen workflow. It handles authentication, menu-driven order creation, table occupancy, role-based access, Socket.IO live updates, and BullMQ alerts for long-pending orders.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## What it does
 
-## Description
+- **Authentication** with JWT stored in an HTTP-only cookie
+- **Role-based access** for `waiter`, `kitchen`, and `admin`
+- **Menu and order management** backed by Drizzle ORM + PostgreSQL
+- **Table tracking** with occupancy status
+- **Real-time order updates** over Socket.IO
+- **Queued alerts** with BullMQ + Redis for pending orders
+- **Global validation and error handling** for consistent API responses
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Tech stack
 
-## Project setup
+- NestJS
+- Drizzle ORM
+- PostgreSQL
+- JWT + Passport
+- bcrypt
+- Socket.IO
+- BullMQ
+- Redis
 
-```bash
-$ npm install
+## Project structure
+
+| Path | Purpose |
+| --- | --- |
+| `src/auth` | Register/login, JWT strategy, guards, and role decorators |
+| `src/order` | Order REST API, Socket.IO gateway, queue processor, business logic |
+| `src/table` | Table listing and occupancy updates |
+| `src/drizzle/schema` | Database schema definitions |
+| `seed/` | Seed scripts for menu items and dining tables |
+| `common/filters` | Global exception filter |
+
+## Features
+
+### Authentication
+
+- Register a new user
+- Login with email/password
+- JWT is issued and stored in a cookie named `token`
+- `/auth/profile` returns the authenticated user
+- `/auth/waiter` demonstrates role-protected access
+
+### Roles
+
+Supported roles:
+
+- `waiter`
+- `kitchen`
+- `admin`
+
+### Orders
+
+- Create a new order from menu items
+- Append items to an existing order
+- Fetch all recent orders
+- Update item status: `pending`, `preparing`, `ready`, `served`
+- Automatically mark the table occupied when an order is created
+- Recalculate order totals from menu snapshots
+
+### Tables
+
+- List all dining tables
+- Update table occupancy
+
+### Realtime workflow
+
+- Authenticate Socket.IO clients with the JWT cookie
+- Auto-join `waiters` or `kitchen` rooms based on role
+- Join table-specific rooms
+- Broadcast new orders and status changes in real time
+
+### Alerting
+
+- BullMQ job checks pending orders
+- If an order remains pending, a kitchen alert is emitted
+- Queue uses Redis on `localhost:6379` in the current code
+
+## Database model
+
+### `user`
+
+- `id`
+- `name`
+- `email`
+- `password`
+- `role`
+- `performance_score`
+- `is_active`
+- timestamps
+
+### `menu_category`
+
+- `id`
+- `name`
+- `is_active`
+- timestamps
+
+### `menu_item`
+
+- `id`
+- `category_id`
+- `name`
+- `description`
+- `price`
+- `is_available`
+- timestamps
+
+### `diningTable`
+
+- `id`
+- `table_number`
+- `is_occupied`
+- `updated_at`
+
+### `order`
+
+- `id`
+- `table_id`
+- `status`
+- `total_price`
+- `is_paid`
+- `payment_method`
+- timestamps
+
+### `order-item`
+
+- `id`
+- `order_id`
+- `menu_item_id`
+- `order_taken_by`
+- `item_name`
+- `status`
+- `price_snapshot`
+- `quantity`
+- `subtotal`
+- `created_at`
+
+## API
+
+### Health
+
+| Method | Route | Auth | Description |
+| --- | --- | --- | --- |
+| `GET` | `/` | No | Returns `Hello World!` |
+
+### Auth
+
+| Method | Route | Auth | Body |
+| --- | --- | --- | --- |
+| `POST` | `/auth/register` | No | `name`, `email`, `password`, `role` |
+| `POST` | `/auth/login` | No | `email`, `password` |
+| `GET` | `/auth/profile` | Yes | - |
+| `GET` | `/auth/waiter` | Yes + role | - |
+
+### Tables
+
+| Method | Route | Auth | Body |
+| --- | --- | --- | --- |
+| `GET` | `/table/all` | Yes | - |
+| `POST` | `/table/change-status` | Yes | `tableId`, `is_occupied` |
+
+### Orders
+
+| Method | Route | Auth | Body |
+| --- | --- | --- | --- |
+| `POST` | `/order/create` | Yes | `table_id`, `items[]` |
+| `GET` | `/order/all` | Yes | - |
+| `POST` | `/order/update/:order_id` | Yes | `table_id`, `items[]` |
+| `POST` | `/order/status/:order_item_id` | Yes | `status` |
+
+## Order payloads
+
+### Create order
+
+```json
+{
+  "table_id": "uuid",
+  "items": [
+    {
+      "menu_item_id": "uuid",
+      "item_name": "Spring Rolls",
+      "quantity": 2
+    }
+  ]
+}
 ```
 
-## Compile and run the project
+### Append to existing order
 
-```bash
-# development
-$ npm run start
+Use the same payload as create order with `POST /order/update/:order_id`.
 
-# watch mode
-$ npm run start:dev
+### Update item status
 
-# production mode
-$ npm run start:prod
+```json
+{
+  "status": "ready"
+}
 ```
 
-## Run tests
+## Socket.IO events
 
-```bash
-# unit tests
-$ npm run test
+### Client to server
 
-# e2e tests
-$ npm run test:e2e
+- `join:table`
+- `order:new`
+- `order:update`
+- `order:served`
+- `order:addToPrevious`
 
-# test coverage
-$ npm run test:cov
+### Server to client
+
+- `joined:table`
+- `order:created`
+- `order:new`
+- `order:update`
+- `order:served`
+- `order:alert`
+
+## Environment variables
+
+Create a `.env` file in the project root:
+
+```env
+DATABASE_URL=postgres://user:password@localhost:5432/restaurant
+JWT_SECRET=your_jwt_secret
+SALT_ROUNDS=10
+PORT=3000
+NODE_ENV=development
 ```
 
-## Deployment
+### Notes
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+- Redis is currently hardcoded to `localhost:6379` for BullMQ.
+- The frontend origin is currently set to `http://localhost:5173`.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Setup
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm install
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+## Run locally
 
-## Resources
+```bash
+npm run start:dev
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+## Build
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```bash
+npm run build
+```
 
-## Support
+## Tests
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```bash
+npm run test
+npm run test:e2e
+npm run test:cov
+```
 
-## Stay in touch
+## Database and seeding
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+This project uses Drizzle ORM. The schema lives in `src/drizzle/schema`.
 
-## License
+### Seed tables
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+```bash
+npx ts-node seed/table.seed.ts
+```
+
+### Seed menu
+
+```bash
+npx ts-node seed/menu.seed.ts
+```
+
+If you generate migrations with Drizzle Kit, the config is in `drizzle.config.ts`.
+
+## Scripts
+
+| Script | Description |
+| --- | --- |
+| `npm run start` | Start the app once |
+| `npm run start:dev` | Start in watch mode |
+| `npm run start:debug` | Start with debugger attached |
+| `npm run start:prod` | Run the compiled app |
+| `npm run build` | Compile TypeScript |
+| `npm run lint` | Run ESLint with autofix |
+| `npm run format` | Format source files |
+| `npm run test` | Run unit tests |
+| `npm run test:e2e` | Run end-to-end tests |
+| `npm run test:cov` | Generate coverage report |
+
+## Response format
+
+Errors are returned through a global exception filter in a consistent shape:
+
+```json
+{
+  "success": false,
+  "statusCode": 400,
+  "timestamp": "2026-06-23T00:00:00.000Z",
+  "path": "/route",
+  "message": "Error message"
+}
+```
+
+## Important behavior
+
+- Cookies are required for authenticated HTTP and Socket.IO requests.
+- Order creation snapshots item names and prices at the time of purchase.
+- Table occupancy is updated automatically when an order is created.
+- Pending orders trigger queue-based alerts for the kitchen.
+
