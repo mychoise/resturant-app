@@ -120,6 +120,32 @@ export class OrderGateway {
     }
   }
 
+  @SubscribeMessage('order:addInPrevious')
+  async addInPrevious(
+    @MessageBody()
+    data: {
+      dto: CreateOrderDto;
+      userId: string;
+      order_id: string;
+    },
+    @ConnectedSocket() client: Socket,
+  ) {
+    try {
+      const { dto: orderData, userId, order_id } = data;
+      const response = await this.orderService.addInPreviousOrder(
+        orderData,
+        userId,
+        order_id,
+      );
+      console.log('git response is', response);
+      client.to('kitchen').emit('order:inprevious', response);
+      client.to('waiters').emit('order:inprevios', response);
+      return response;
+    } catch (error) {
+      console.log('failed to add in previous order', error);
+    }
+  }
+
   @SubscribeMessage('order:update')
   async handleUpdateOrder(
     @MessageBody()

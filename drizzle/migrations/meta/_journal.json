@@ -57,6 +57,13 @@
       "when": 1782111723476,
       "tag": "0007_great_captain_cross",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1782283319452,
+      "tag": "0008_futuristic_mimic",
+      "breakpoints": true
     }
   ]
 }

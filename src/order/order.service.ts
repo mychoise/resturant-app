@@ -8,6 +8,7 @@ import { eq, gte } from 'drizzle-orm';
 import { TableService } from 'src/table/table.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { desc } from 'drizzle-orm';
 // import { OrderProcessor } from './order.processor';
 
 @Injectable()
@@ -242,6 +243,42 @@ export class OrderService {
         msg: `Items added successfully: ${itemNames}`,
       };
     });
+  }
+
+  async getAllOrderById(table_id: string) {
+    try {
+      console.log(
+        '=================================================================================================================',
+      );
+      console.log('Table id received', table_id);
+      const [order] = await this.db
+        .select()
+        .from(schema.order)
+        .where(eq(schema.order.table_id, table_id))
+        .orderBy(desc(schema.order.ordered_at));
+      console.log('order found', order);
+
+      const orderedItem = await this.db
+        .select()
+        .from(schema.order_item)
+        .where(eq(schema.order_item.order_id, order.id));
+
+      console.log('ordered items are', orderedItem);
+
+      return {
+        order,
+        orderedItem,
+      };
+    } catch (error) {
+      console.log('error in getAllOrderById', error);
+      throw new Error();
+    }
+
+    // const orderDetails = await this.db
+    //   .select()
+    //   .from(schema.order_item)
+    //   .where(eq(schema.order_item.order_id, order.id));
+    // return orderDetails;
   }
 
   async getAllOrders() {

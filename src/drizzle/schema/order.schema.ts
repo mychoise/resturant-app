@@ -33,6 +33,7 @@ export const order = pgTable('order', {
   payment_method: payment_method_enum('payment_method').default('cash'),
   ordered_at: timestamp('ordered_at').defaultNow(),
   updated_at: timestamp('updated_at').defaultNow(),
+  closed_at: timestamp('closed_at'),
 });
 
 export const order_item = pgTable('order-item', {

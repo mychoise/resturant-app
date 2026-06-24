@@ -19,6 +19,12 @@ export class OrderController {
     return this.orderService.getAllOrders();
   }
 
+  @Get('/all/:table_id')
+  @UseGuards(JwtAuthGuard)
+  async getAllOrdersByTable(@Param('table_id') table_id: string) {
+    return this.orderService.getAllOrderById(table_id);
+  }
+
   @Post('/update/:order_id')
   @UseGuards(JwtAuthGuard)
   async updateOrderStatus(
