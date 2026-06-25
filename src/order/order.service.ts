@@ -207,11 +207,17 @@ export class OrderService {
     const [order] = await this.db
       .select()
       .from(schema.order)
-      .where(eq(schema.order.id, order_id));
+      .where(eq(schema.order.id, order_id))
+      .innerJoin(
+        schema.diningTable,
+        eq(schema.order.table_id, schema.diningTable.id),
+      );
 
     if (!order) {
       throw new NotFoundException(`Order with ID ${order_id} not found`);
     }
+
+    console.log('fucking iduidgufiweuif order found', order);
 
     return await this.db.transaction(async (tx) => {
       let additionalPrice = 0;
@@ -230,10 +236,14 @@ export class OrderService {
           subtotal,
         };
       });
-      await tx.insert(schema.order_item).values(orderItems);
+      const insertedItem = await tx
+        .insert(schema.order_item)
+        .values(orderItems)
+        .returning();
+
       const [updatedOrder] = await tx
         .update(schema.order)
-        .set({ total_price: order.total_price + additionalPrice })
+        .set({ total_price: order.order.total_price + additionalPrice })
         .where(eq(schema.order.id, order_id))
         .returning();
       const itemNames = orderData
@@ -241,7 +251,11 @@ export class OrderService {
         .join(', ');
 
       return {
-        order: updatedOrder,
+        order: {
+          ...updatedOrder,
+          items: insertedItem,
+        },
+        table: order.diningTable,
         msg: `Items added successfully: ${itemNames}`,
       };
     });

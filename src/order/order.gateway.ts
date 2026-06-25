@@ -108,6 +108,9 @@ export class OrderGateway {
       console.log('From client:', client.id);
       const userId = client.data.userId;
       const order = await this.orderService.createOrder(dto, userId);
+      console.log(
+        'wefwfguwhfhwfhuwehfhfhfhfhuhfwufuiwiewurgugwufgugfgwfugfwuguwf----------------------------------',
+      );
       console.log('Order created:', order);
       client.to('kitchen').emit('order:new', order);
       client.to('waiters').emit('order:new', order);
@@ -138,8 +141,8 @@ export class OrderGateway {
         data.order_id,
       );
       console.log('git response is', response);
-      client.to('kitchen').emit('order:inprevious', response);
-      client.to('waiters').emit('order:inprevios', response);
+      client.to('kitchen').emit('order:addInPrevious', response);
+      client.to('waiters').emit('order:addInPrevious', response);
       client.emit('order:created', response);
 
       return response;
