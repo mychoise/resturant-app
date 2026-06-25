@@ -26,3 +26,16 @@ export class CreateOrderDto {
   @Type(() => CreateOrderItemDto)
   items: CreateOrderItemDto[];
 }
+
+export class AddInPreviousDto {
+  @IsUUID()
+  order_id: string;
+
+  @IsUUID()
+  table_id: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateOrderItemDto)
+  items: CreateOrderItemDto[];
+}

@@ -3,7 +3,7 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DRIZZLE } from 'src/drizzle/drizzle.module';
 import * as schema from '../drizzle/schema/schema';
 import { inArray } from 'drizzle-orm';
-import { CreateOrderDto } from './dto/createorder.dto';
+import { CreateOrderDto, CreateOrderItemDto } from './dto/createorder.dto';
 import { eq, gte } from 'drizzle-orm';
 import { TableService } from 'src/table/table.service';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -179,17 +179,18 @@ export class OrderService {
   }
 
   async addInPreviousOrder(
-    orderData: CreateOrderDto,
+    orderData: CreateOrderItemDto[],
     userId: string,
     order_id: string,
   ) {
+    console.log('data received from frontend is ', orderData);
     const menu = await this.db
       .select()
       .from(schema.menu_item)
       .where(
         inArray(
           schema.menu_item.id,
-          orderData.items.map((item) => item.menu_item_id),
+          orderData.map((item) => item.menu_item_id),
         ),
       );
 
@@ -214,7 +215,8 @@ export class OrderService {
 
     return await this.db.transaction(async (tx) => {
       let additionalPrice = 0;
-      const orderItems = orderData.items.map((item) => {
+      console.log('orderData is', orderData);
+      const orderItems = orderData?.map((item) => {
         const menuItem = menuMap.get(item.menu_item_id);
         const subtotal = (menuItem?.price || 0) * item.quantity;
         additionalPrice += subtotal;
@@ -234,7 +236,7 @@ export class OrderService {
         .set({ total_price: order.total_price + additionalPrice })
         .where(eq(schema.order.id, order_id))
         .returning();
-      const itemNames = orderData.items
+      const itemNames = orderData
         .map((item) => menuMap.get(item.menu_item_id)?.name)
         .join(', ');
 

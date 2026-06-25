@@ -7,7 +7,7 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Socket } from 'socket.io';
-import { CreateOrderDto } from './dto/createorder.dto';
+import { AddInPreviousDto, CreateOrderDto } from './dto/createorder.dto';
 import { OrderService } from './order.service';
 import { Server } from 'socket.io';
 import { UsePipes, ValidationPipe } from '@nestjs/common';
@@ -122,24 +122,26 @@ export class OrderGateway {
 
   @SubscribeMessage('order:addInPrevious')
   async addInPrevious(
-    @MessageBody()
-    data: {
-      dto: CreateOrderDto;
-      userId: string;
-      order_id: string;
-    },
+    @MessageBody() data: AddInPreviousDto,
     @ConnectedSocket() client: Socket,
   ) {
     try {
-      const { dto: orderData, userId, order_id } = data;
+      console.log('data received from frontend is ', data);
+      console.log('client data is', client.data);
+      console.log('--------------------------------------------------------');
+      console.log('items is ', data.items);
+      // const { dto: orderData, order_id } = data;
+      const userId = client.data.userId;
       const response = await this.orderService.addInPreviousOrder(
-        orderData,
+        data.items,
         userId,
-        order_id,
+        data.order_id,
       );
       console.log('git response is', response);
       client.to('kitchen').emit('order:inprevious', response);
       client.to('waiters').emit('order:inprevios', response);
+      client.emit('order:created', response);
+
       return response;
     } catch (error) {
       console.log('failed to add in previous order', error);
@@ -194,28 +196,5 @@ export class OrderGateway {
     client.to('kitchen').emit('order:served', updatedOrder?.updatedItem);
     client.emit('order:served', updatedOrder?.updatedItem);
     return updatedOrder;
-  }
-
-  @SubscribeMessage('order:addToPrevious')
-  async handleAddToPervious(
-    @MessageBody()
-    data: {
-      dto: CreateOrderDto;
-      userId: string;
-      order_id: string;
-    },
-    @ConnectedSocket() client: Socket,
-  ) {
-    console.log('added order received for', data.dto);
-    const order = await this.orderService.addInPreviousOrder(
-      data.dto,
-      data.userId,
-      data.order_id,
-    );
-    client.to('kitchen').emit('order:new', order);
-    client.to('waiters').emit('order:new', order);
-    client.to(`table:${data.dto.table_id}`).emit('order:new', order);
-    client.emit('order:created', order);
-    return order;
   }
 }
