@@ -127,6 +127,8 @@ export class OrderService {
         .where(eq(schema.order_item.id, order_item_id))
         .returning();
 
+      console.log('item staus succesfully updated to', updatedItem.status);
+
       const result = await this.db
         .select()
         .from(schema.order_item)
@@ -137,10 +139,8 @@ export class OrderService {
         .innerJoin(
           schema.diningTable,
           eq(schema.order.table_id, schema.diningTable.id),
-        );
-      // .where(eq(schema.order_item.order_id, updatedItem.order_id));
-      //
-      //
+        )
+        .where(eq(schema.order_item.order_id, updatedItem.order_id));
       console.log('data udgsdiu', result);
       const table = result[0].diningTable.table_number;
 
@@ -243,12 +243,29 @@ export class OrderService {
 
       const [updatedOrder] = await tx
         .update(schema.order)
-        .set({ total_price: order.order.total_price + additionalPrice })
+        .set({
+          total_price: order.order.total_price + additionalPrice,
+          status: 'pending',
+        })
         .where(eq(schema.order.id, order_id))
         .returning();
       const itemNames = orderData
         .map((item) => menuMap.get(item.menu_item_id)?.name)
         .join(', ');
+
+      const scheduler = await this.orderQueue.upsertJobScheduler(
+        `alert-${order.order.id}`, // unique per order
+        { every: 60 * 1000 }, // every 1 minute
+        {
+          name: 'provide:alert',
+          data: {
+            orderId: order.order.id,
+            tableNumber: order.diningTable.table_number,
+          },
+        },
+      );
+
+      console.log('scheduled task with', scheduler);
 
       return {
         order: {

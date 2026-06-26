@@ -32,7 +32,7 @@ export class OrderProcessor extends WorkerHost {
   }
   private async sendAlert(job: Job) {
     const { orderId, tableNumber } = job.data;
-    console.log('Sending alert for job:', job.id, 'with data:', job.data);
+    // console.log('Sending alert for job:', job.id, 'with data:', job.data);
     const item = await this.db
       .select()
       .from(schema.order)
@@ -40,9 +40,9 @@ export class OrderProcessor extends WorkerHost {
 
     const isPending = item.some((order) => order.status === 'pending');
     if (isPending) {
-      console.log(
-        `Order item ${orderId} is still pending. Sending alert to kitchen for table ${tableNumber}.`,
-      );
+      // console.log(
+      //   `Order item ${orderId} is still pending. Sending alert to kitchen for table ${tableNumber}.`,
+      // );
 
       this.orderGateway.server.to('kitchen').emit('order:alert', {
         orderId,
