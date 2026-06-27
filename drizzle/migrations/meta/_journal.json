@@ -64,6 +64,20 @@
       "when": 1782283319452,
       "tag": "0008_futuristic_mimic",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1782546503215,
+      "tag": "0009_mean_dagger",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1782547236147,
+      "tag": "0010_woozy_lester",
+      "breakpoints": true
     }
   ]
 }
