@@ -9,7 +9,8 @@ export const payment = pgTable('payment', {
   id: uuid('id').primaryKey().defaultRandom(),
   order_group_id: uuid('order_group_id')
     .references(() => order.id)
-    .notNull(),
+    .notNull()
+    .unique(),
   total_price: integer('total_price').notNull(),
   payment_type: payment_type('payment_type').notNull(),
   transaction_id: uuid('transaction_id'),

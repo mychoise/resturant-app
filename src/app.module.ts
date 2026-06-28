@@ -7,6 +7,7 @@ import { DrizzleModule } from './drizzle/drizzle.module';
 import { OrderModule } from './order/order.module';
 import { TableModule } from './table/table.module';
 import { BullModule } from '@nestjs/bullmq';
+import { PaymentModule } from './payment/payment.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { BullModule } from '@nestjs/bullmq';
         port: 6379,
       },
     }),
+    PaymentModule,
   ],
   controllers: [AppController],
   providers: [AppService],
