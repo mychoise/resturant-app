@@ -156,10 +156,12 @@ export class OrderGateway {
     @MessageBody()
     data: {
       order_item_id: string;
-      status: 'pending' | 'preparing' | 'ready' | 'served';
+      status: 'pending' | 'preparing' | 'ready';
     },
     @ConnectedSocket() client: Socket,
   ) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const userRole = client.data.role;
     console.log(
       'Received order update for',
       data.order_item_id,
@@ -184,6 +186,15 @@ export class OrderGateway {
     },
     @ConnectedSocket() client: Socket,
   ) {
+    const userRole = client.data.role;
+    if (userRole !== 'waiter') {
+      console.log('Unauthorized attempt to mark order as served by', userRole);
+      client.emit(
+        'error',
+        'Unauthorized: Only waiters can mark orders as served.',
+      );
+      return;
+    }
     console.log(
       'Received order update for',
       data.order_item_id,
