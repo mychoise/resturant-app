@@ -1,1 +1,0 @@
-ALTER TABLE "order" DROP COLUMN "table_number";

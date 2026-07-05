@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DRIZZLE } from 'src/drizzle/drizzle.module';
 import * as schema from '../drizzle/schema/schema';
@@ -13,6 +13,19 @@ export class PaymentService {
     payment_type: 'cash' | 'online',
   ) {
     try {
+      const [orderCheck] = await this.db
+        .select({
+          status: schema.order.status,
+        })
+        .from(schema.order)
+        .where(eq(schema.order.id, order_id));
+
+      if (orderCheck.status !== 'served') {
+        throw new BadRequestException(
+          'Order is not served yet. Payment can only be created for served orders.',
+        );
+      }
+
       return await this.db.transaction(async (tx) => {
         await tx
           .update(schema.diningTable)
@@ -35,6 +48,7 @@ export class PaymentService {
       });
     } catch (error) {
       console.error('Error creating payment:', error);
+      throw error;
     }
   }
 }

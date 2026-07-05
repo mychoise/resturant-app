@@ -8,6 +8,7 @@ import { OrderModule } from './order/order.module';
 import { TableModule } from './table/table.module';
 import { BullModule } from '@nestjs/bullmq';
 import { PaymentModule } from './payment/payment.module';
+import { MenuModule } from './menu/menu.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { PaymentModule } from './payment/payment.module';
       },
     }),
     PaymentModule,
+    MenuModule,
   ],
   controllers: [AppController],
   providers: [AppService],

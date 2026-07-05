@@ -1,1 +1,0 @@
-ALTER TABLE "user" ALTER COLUMN "performance_score" DROP NOT NULL;

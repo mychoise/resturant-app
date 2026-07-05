@@ -1,1 +1,0 @@
-ALTER TABLE "payment" ADD CONSTRAINT "payment_order_group_id_unique" UNIQUE("order_group_id");

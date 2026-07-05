@@ -1,1 +1,0 @@
-ALTER TABLE "menu_category" ALTER COLUMN "name" SET DATA TYPE text;
