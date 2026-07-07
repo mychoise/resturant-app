@@ -16,7 +16,17 @@ import * as cookie from 'cookie';
 @UsePipes(new ValidationPipe())
 @WebSocketGateway({
   cors: {
-    origin: 'http://localhost:5173', // your exact frontend URL
+    origin: (origin, callback) => {
+      const allowedOrigins = [
+        'http://localhost:5173',
+        'http://192.168.1.71:5173',
+      ];
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
   },
 })
