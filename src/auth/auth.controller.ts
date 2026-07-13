@@ -25,6 +25,7 @@ export class AuthController {
 
   @Post('register')
   @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   async register(
     @Body() data: registerDto,
     @Res({ passthrough: true }) res: Response,

@@ -7,7 +7,7 @@ import {
 import { DRIZZLE } from 'src/drizzle/drizzle.module';
 import * as schema from '../drizzle/schema/schema';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import type { AddMenu, UpdateMenu } from './dto/menu.dto';
 
 @Injectable()
@@ -19,10 +19,15 @@ export class MenuService {
     const result = await this.db
       .select()
       .from(schema.menu_item)
-      .innerJoin(
+      .rightJoin(
         schema.menu_category,
-        eq(schema.menu_category.id, schema.menu_item.category_id),
+        and(
+          eq(schema.menu_category.id, schema.menu_item.category_id),
+          eq(schema.menu_item.is_available, true),
+        ),
       );
+
+    console.log('result we got is', result);
 
     result.map((item) => {
       if (!categoryMap.has(item.menu_category.name)) {
@@ -35,17 +40,18 @@ export class MenuService {
     });
 
     const value = result.map((item) => {
-      return item.menu_item;
+      if (item.menu_item !== null) {
+        return item.menu_item;
+      }
+      return null;
     });
-
-    console.log('value', value);
 
     console.log('category', categoryMap);
 
     return {
       success: true,
       category: Array.from(categoryMap.values()),
-      data: value,
+      data: value.filter((item) => item !== null),
     };
   }
 
@@ -97,6 +103,7 @@ export class MenuService {
     const [updatedMenuItem] = await this.db
       .update(schema.menu_item)
       .set(data)
+      .where(eq(schema.menu_item.id, id))
       .returning();
 
     return {
