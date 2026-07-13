@@ -2,9 +2,13 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DRIZZLE } from 'src/drizzle/drizzle.module';
 import * as schema from '../drizzle/schema/schema';
-import { inArray } from 'drizzle-orm';
-import { CreateOrderDto, CreateOrderItemDto } from './dto/createorder.dto';
-import { eq, gte } from 'drizzle-orm';
+import { inArray, lt } from 'drizzle-orm';
+import {
+  CreateOrderDto,
+  CreateOrderItemDto,
+  FilterOrderDto,
+} from './dto/createorder.dto';
+import { eq, gte, and } from 'drizzle-orm';
 import { TableService } from 'src/table/table.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -347,5 +351,39 @@ export class OrderService {
     }
 
     return { orders: Array.from(ordersMap.values()) };
+  }
+
+  async adminGetAllOrder(data: FilterOrderDto) {
+    const limit = 10;
+    const condn: any = [];
+
+    if (data.date) {
+      const startDay = new Date(data.date);
+      const endDay = new Date(startDay);
+      endDay.setDate(endDay.getDate() + 1);
+      condn.push(
+        and(
+          gte(schema.order.ordered_at, startDay),
+          lt(schema.order.ordered_at, endDay),
+        ),
+      );
+    }
+    if (data.status) condn.push(eq(schema.order.status, data.status));
+    if (data.table_id) condn.push(eq(schema.order.table_id, data.table_id));
+
+    const returned = await this.db
+      .select()
+      .from(schema.order)
+      .where(and(...condn))
+      .limit(limit)
+      .offset(data.page ? (data.page - 1) * limit : 0)
+      .orderBy(desc(schema.order.ordered_at));
+
+    console.log('returned data is', returned);
+
+    return {
+      msg: 'h',
+      data: returned,
+    };
   }
 }

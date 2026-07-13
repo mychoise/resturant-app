@@ -1,11 +1,11 @@
 import {
   IsArray,
   IsNumber,
+  IsOptional,
   IsString,
   IsUUID,
   ValidateNested,
 } from 'class-validator';
-import { uuid } from 'drizzle-orm/pg-core';
 import { Type } from 'class-transformer';
 
 export class CreateOrderItemDto {
@@ -38,4 +38,22 @@ export class AddInPreviousDto {
   @ValidateNested({ each: true })
   @Type(() => CreateOrderItemDto)
   items: CreateOrderItemDto[];
+}
+
+export class FilterOrderDto {
+  @IsString()
+  @IsOptional()
+  status?: 'pending' | 'preparing' | 'ready' | 'served';
+
+  @IsNumber()
+  @IsOptional()
+  page?: number;
+
+  @IsString()
+  @IsOptional()
+  date?: string;
+
+  @IsUUID()
+  @IsOptional()
+  table_id?: string;
 }
