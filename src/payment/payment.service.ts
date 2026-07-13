@@ -2,7 +2,9 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DRIZZLE } from 'src/drizzle/drizzle.module';
 import * as schema from '../drizzle/schema/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq, lte } from 'drizzle-orm';
+import { gte } from 'drizzle-orm';
+import { paymentFilter } from './dto/payment.dto';
 
 @Injectable()
 export class PaymentService {
@@ -50,5 +52,36 @@ export class PaymentService {
       console.error('Error creating payment:', error);
       throw error;
     }
+  }
+
+  async viewAllPayment(data: paymentFilter) {
+    const limit = 10;
+    const condn: any = [];
+    if (data.paymentType)
+      condn.push(eq(schema.payment.payment_type, data.paymentType));
+    if (data.date) {
+      const currentTime = new Date(data.date);
+      const endTime = new Date(currentTime);
+      endTime.setDate(endTime.getDate() + 1);
+      condn.push(
+        and(
+          gte(schema.payment.created_at, currentTime),
+          lte(schema.payment.created_at, endTime),
+        ),
+      );
+    }
+
+    const allPayment = await this.db
+      .select()
+      .from(schema.payment)
+      .where(and(...condn))
+      .limit(limit)
+      .offset(data.page ? (data.page - 1) * limit : 0);
+
+    console.log('all payment are ', allPayment);
+    return {
+      msg: 'payment success',
+      data: allPayment,
+    };
   }
 }
