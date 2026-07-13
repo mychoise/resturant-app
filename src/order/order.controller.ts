@@ -11,12 +11,17 @@ import { OrderService } from './order.service';
 import { JwtAuthGuard } from 'src/auth/guards/access.guard';
 import { User } from 'src/auth/decorators/user.decorator';
 import { FilterOrderDto } from './dto/createorder.dto';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { Roles } from 'src/auth/decorators/roles.decorator';
+import { Role } from 'src/auth/dto/register.dto';
 
 @Controller('order')
 export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
   @Get('/order')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   async getEveryOrders(@Query() query: FilterOrderDto) {
     return this.orderService.adminGetAllOrder(query);
   }
