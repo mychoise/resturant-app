@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Post,
   Put,
   UseGuards,
@@ -34,14 +35,17 @@ export class MenuController {
   @Delete('delete/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
-  async deleteMenuItem(@Param() params: any) {
-    return await this.menuService.removeMenuItem(params.id);
+  async deleteMenuItem(@Param('id', ParseUUIDPipe) id: string) {
+    return await this.menuService.removeMenuItem(id);
   }
 
   @Put('update/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
-  async updateMenuItem(@Param() params: any, @Body() data: UpdateMenu) {
-    return this.menuService.updateItem(params.id, data);
+  async updateMenuItem(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() data: UpdateMenu,
+  ) {
+    return this.menuService.updateItem(id, data);
   }
 }

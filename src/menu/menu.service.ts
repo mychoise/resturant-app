@@ -106,6 +106,12 @@ export class MenuService {
       .where(eq(schema.menu_item.id, id))
       .returning();
 
+    console.log('updated menu item', updatedMenuItem);
+
+    if (!updatedMenuItem) {
+      throw new NotFoundException('Provided item is not available');
+    }
+
     return {
       msg: 'updated sucessfully',
       data: updatedMenuItem,

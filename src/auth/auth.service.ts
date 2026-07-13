@@ -90,6 +90,38 @@ export class AuthService {
     };
   }
 
+  async removeUser(email: string) {
+    const [removedUser] = await this.db
+      .delete(schema.users)
+      .where(eq(schema.users.email, email))
+      .returning();
+
+    if (!removedUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    return {
+      msg: 'User deleted successfully',
+      data: removedUser,
+    };
+  }
+
+  async updateUser(email: string, data: any) {
+    const [updatedUser] = await this.db
+      .update(schema.users)
+      .set(data)
+      .where(eq(schema.users.email, email))
+      .returning();
+    console.log('user updated', updatedUser);
+
+    if (!updatedUser) {
+      throw new NotFoundException('User not found');
+    }
+    return {
+      msg: 'User updated successfully',
+    };
+  }
+
   async validateUser(email: string) {
     const [user] = await this.db
       .select()
@@ -103,6 +135,24 @@ export class AuthService {
     const { password, ...result } = user;
 
     return result;
+  }
+
+  async updatePassword(email: string, newPassword: string) {
+    const hashedPassword = await this.hashPassword(newPassword);
+
+    const [updatedUser] = await this.db
+      .update(schema.users)
+      .set({ password: hashedPassword })
+      .where(eq(schema.users.email, email))
+      .returning();
+
+    if (!updatedUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    return {
+      msg: 'Password updated successfully',
+    };
   }
 
   async hashPassword(password: string): Promise<string> {
