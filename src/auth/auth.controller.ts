@@ -71,4 +71,9 @@ export class AuthController {
   getwaiter(@User() user: any) {
     return user;
   }
+
+  @Get('stats')
+  async getStats() {
+    return this.authService.getUserStats();
+  }
 }

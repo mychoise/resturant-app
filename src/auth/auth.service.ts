@@ -160,6 +160,23 @@ export class AuthService {
     return await bcrypt.hash(password, saltRounds);
   }
 
+  async getUserStats() {
+    const users = await this.db.select().from(schema.users);
+    const allUsers = users.length;
+    const activUser = users.filter((user) => user.is_active === true).length;
+    const newHires = users.filter(
+      (user) =>
+        user.created_at! >=
+        new Date(new Date().setDate(new Date().getDate() - 30)),
+    ).length;
+
+    return {
+      allUsers,
+      activUser,
+      newHires,
+    };
+  }
+
   generateAccessToken(user: schema.User): string {
     console.log('Generating access token for user:', user);
     const payload = {
