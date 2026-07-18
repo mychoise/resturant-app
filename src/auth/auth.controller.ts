@@ -2,7 +2,9 @@ import {
   Body,
   Controller,
   Get,
+  Param,
   Post,
+  Query,
   Req,
   Res,
   UseGuards,
@@ -16,6 +18,7 @@ import { RolesGuard } from './guards/roles.guard';
 import { Roles } from './decorators/roles.decorator';
 import type { Response } from 'express';
 import { JwtService } from '@nestjs/jwt';
+import { getAllUserDto } from './dto/user.dto';
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -58,22 +61,17 @@ export class AuthController {
     return result;
   }
 
-  @Get('profile')
-  @UseGuards(JwtAuthGuard)
-  getProfile(@User() user: any) {
-    console.log('User in getProfile:', user);
-    return user;
-  }
-
-  @Get('waiter')
-  @Roles(Role.WAITER)
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  getwaiter(@User() user: any) {
-    return user;
-  }
-
   @Get('stats')
+  @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   async getStats() {
     return this.authService.getUserStats();
+  }
+
+  @Get('users')
+  @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  async getAllUsers(@Query() data: getAllUserDto) {
+    return this.authService.getAllUsers(data);
   }
 }

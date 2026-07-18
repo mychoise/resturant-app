@@ -10,9 +10,11 @@ import { login, register } from './interface/auth.interface';
 import { DRIZZLE } from 'src/drizzle/drizzle.module';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from 'src/drizzle/schema/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import { sql } from 'drizzle-orm';
+import { getAllUserDto } from './dto/user.dto';
 
 @Injectable()
 export class AuthService {
@@ -161,19 +163,48 @@ export class AuthService {
   }
 
   async getUserStats() {
-    const users = await this.db.select().from(schema.users);
-    const allUsers = users.length;
-    const activUser = users.filter((user) => user.is_active === true).length;
-    const newHires = users.filter(
-      (user) =>
-        user.created_at! >=
-        new Date(new Date().setDate(new Date().getDate() - 30)),
-    ).length;
+    const [stats] = await this.db
+      .select({
+        allUsers: sql<number>`count(*)`,
+        activeUser: sql<number>`count(*) filter (where ${schema.users.is_active} = true)`,
+        newHires: sql<number>`count(*) filter (where ${schema.users.created_at} >= now() - interval '30 days')`,
+      })
+      .from(schema.users);
 
     return {
-      allUsers,
-      activUser,
-      newHires,
+      allUsers: stats.allUsers,
+      activeUser: stats.activeUser,
+      newHires: stats.newHires,
+    };
+  }
+
+  async getAllUsers(data: getAllUserDto) {
+    const pageNumber = data.page;
+    const category = data.category;
+    if (category && !['kitchen', 'waiter', 'admin'].includes(category)) {
+      throw new NotFoundException('Invalid category');
+    }
+    const limit = 10;
+    const condition: any = [];
+    if (category) {
+      condition.push(eq(schema.users.role, category));
+    }
+    const users = await this.db
+      .select()
+      .from(schema.users)
+      .where(and(...condition))
+      .limit(limit)
+      .offset((pageNumber - 1) * limit);
+
+    const user: any = [];
+    users.forEach((item) => {
+      const { password, ...result } = item;
+      user.push(result);
+    });
+
+    return {
+      msg: 'users fetched successfully',
+      data: user,
     };
   }
 
