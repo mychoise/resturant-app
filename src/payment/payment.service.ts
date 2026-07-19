@@ -2,7 +2,7 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DRIZZLE } from 'src/drizzle/drizzle.module';
 import * as schema from '../drizzle/schema/schema';
-import { and, eq, lte } from 'drizzle-orm';
+import { and, eq, lte, sql } from 'drizzle-orm';
 import { gte } from 'drizzle-orm';
 import { paymentFilter } from './dto/payment.dto';
 
@@ -52,6 +52,31 @@ export class PaymentService {
       console.error('Error creating payment:', error);
       throw error;
     }
+  }
+
+  async PaymentStats() {
+    const [result] = await this.db
+      .select({
+        totalPayment: sql<number>`count(*)`,
+        totalRevenue: sql<number>`coalesce(sum(${schema.payment.total_price}), 0)`,
+        totalCash: sql<number>`
+            coalesce(sum(case
+              when ${schema.payment.payment_type} = 'cash'
+              then ${schema.payment.total_price}
+              else 0
+            end), 0)
+          `,
+        totalOnline: sql<number>`
+            coalesce(sum(case
+              when ${schema.payment.payment_type} = 'online'
+              then ${schema.payment.total_price}
+              else 0
+            end), 0)
+          `,
+      })
+      .from(schema.payment);
+
+    return result;
   }
 
   async viewAllPayment(data: paymentFilter) {

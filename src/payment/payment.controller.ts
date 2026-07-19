@@ -24,4 +24,9 @@ export class PaymentController {
   async getAllPayment(@Query() query: paymentFilter) {
     return this.paymentService.viewAllPayment(query);
   }
+
+  @Get('/stats')
+  async getPaymentStats() {
+    return this.paymentService.PaymentStats();
+  }
 }
