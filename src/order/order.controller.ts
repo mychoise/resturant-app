@@ -62,4 +62,10 @@ export class OrderController {
   ) {
     return this.orderService.changeStatus(order_item_id, status);
   }
+
+  @Get('stats')
+  // @UseGuards(JwtAuthGuard)
+  async getOrderStats() {
+    return this.orderService.getOrderStats();
+  }
 }

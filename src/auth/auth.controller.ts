@@ -68,6 +68,12 @@ export class AuthController {
     return this.authService.getUserStats();
   }
 
+  @Get('profile')
+  @UseGuards(JwtAuthGuard)
+  async getProfile(@User() user: any) {
+    return this.authService.validateUser(user.email);
+  }
+
   @Get('users')
   @Roles(Role.ADMIN)
   @UseGuards(JwtAuthGuard, RolesGuard)

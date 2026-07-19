@@ -13,6 +13,7 @@ import { TableService } from 'src/table/table.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { desc } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 // import { OrderProcessor } from './order.processor';
 
 @Injectable()
@@ -384,6 +385,34 @@ export class OrderService {
     return {
       msg: 'h',
       data: returned,
+    };
+  }
+
+  async getOrderStats() {
+    const startDay = new Date();
+    const endDay = new Date(startDay);
+    endDay.setDate(endDay.getDate() + 1);
+    const [data] = await this.db
+      .select({
+        allOrders: sql<number>`count(*) filter ( where ${schema.order.status} = 'pending'
+          or ${schema.order.status}='preparing') `,
+        pendingCooking: sql<number>`count(*) filter (where ${schema.order.status} = 'pending')`,
+        served: sql<number>`count(*) filter (where ${schema.order.status} = 'served')`,
+      })
+      .from(schema.order)
+      .where(
+        and(
+          gte(schema.order.ordered_at, startDay),
+          lt(schema.order.ordered_at, endDay),
+        ),
+      );
+
+    const kithcenLoad = Math.min((data.allOrders / 20) * 100, 100);
+    return {
+      allOrders: data.allOrders,
+      pendingCooking: data.pendingCooking,
+      served: data.served,
+      kithcenLoad: kithcenLoad,
     };
   }
 }
