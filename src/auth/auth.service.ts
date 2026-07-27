@@ -171,11 +171,22 @@ export class AuthService {
       })
       .from(schema.users);
 
-    return {
-      allUsers: stats.allUsers,
-      activeUser: stats.activeUser,
-      newHires: stats.newHires,
-    };
+    const payload = [
+      {
+        name: 'Total Users',
+        value: stats.allUsers,
+      },
+      {
+        name: 'Active Users',
+        value: stats.activeUser,
+      },
+      {
+        name: 'New Hires',
+        value: stats.newHires,
+      },
+    ];
+
+    return payload;
   }
 
   async getAllUsers(data: getAllUserDto) {

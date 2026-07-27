@@ -45,8 +45,9 @@ export class FilterOrderDto {
   @IsOptional()
   status?: 'pending' | 'preparing' | 'ready' | 'served';
 
-  @IsNumber()
+  // @IsNumber()
   @IsOptional()
+  @Type(() => Number)
   page?: number;
 
   @IsString()

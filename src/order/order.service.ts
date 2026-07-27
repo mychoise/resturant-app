@@ -369,13 +369,26 @@ export class OrderService {
         ),
       );
     }
+    console.log('data received from frontend is', data);
     if (data.status) condn.push(eq(schema.order.status, data.status));
     if (data.table_id) condn.push(eq(schema.order.table_id, data.table_id));
 
     const returned = await this.db
-      .select()
+      .select({
+        id: schema.order.id,
+        table_id: schema.order.table_id,
+        status: schema.order.status,
+        total_price: schema.order.total_price,
+        updated_at: schema.order.updated_at,
+        ordered_at: schema.order.ordered_at,
+        table_number: schema.diningTable.table_number,
+      })
       .from(schema.order)
       .where(and(...condn))
+      .innerJoin(
+        schema.diningTable,
+        eq(schema.order.table_id, schema.diningTable.id),
+      )
       .limit(limit)
       .offset(data.page ? (data.page - 1) * limit : 0)
       .orderBy(desc(schema.order.ordered_at));
@@ -409,10 +422,10 @@ export class OrderService {
 
     const kithcenLoad = Math.min((data.allOrders / 20) * 100, 100);
     return {
-      allOrders: data.allOrders,
-      pendingCooking: data.pendingCooking,
-      served: data.served,
-      kithcenLoad: kithcenLoad,
+      allOrders: data.allOrders || 0,
+      pendingCooking: data.pendingCooking || 0,
+      served: data.served || 0,
+      kithcenLoad: kithcenLoad || 0,
     };
   }
 }

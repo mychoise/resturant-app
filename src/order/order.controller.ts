@@ -28,6 +28,7 @@ export class OrderController {
 
   @Post('/create')
   @UseGuards(JwtAuthGuard)
+  @Roles(Role.WAITER)
   async createOrder(@Body() orderData: any, @User() user: any) {
     return this.orderService.createOrder(orderData, user.id);
   }
@@ -64,8 +65,9 @@ export class OrderController {
   }
 
   @Get('stats')
-  // @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard)
   async getOrderStats() {
+    console.log('did youcallme');
     return this.orderService.getOrderStats();
   }
 }

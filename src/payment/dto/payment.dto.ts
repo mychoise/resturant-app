@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import { IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class paymentFilter {
@@ -11,5 +12,6 @@ export class paymentFilter {
 
   @IsNumber()
   @IsOptional()
+  @Type(() => Number)
   page?: number;
 }
