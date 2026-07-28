@@ -34,7 +34,8 @@ export class OrderController {
   }
 
   @Get('/all')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.KITCHEN)
   async getAllOrders() {
     return this.orderService.getAllOrders();
   }
@@ -65,7 +66,8 @@ export class OrderController {
   }
 
   @Get('stats')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   async getOrderStats() {
     console.log('did youcallme');
     return this.orderService.getOrderStats();
