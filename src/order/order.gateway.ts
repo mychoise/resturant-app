@@ -20,6 +20,7 @@ import * as cookie from 'cookie';
       const allowedOrigins = [
         'http://localhost:5173',
         'http://192.168.1.71:5173',
+        'https://resturant-app-frontend-gamma.vercel.app',
       ];
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
